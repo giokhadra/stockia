@@ -1,0 +1,42 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    env:
+      # CI-only throwaway password for the disposable SQL Server container below.
+      SA_PASSWORD: Ci_Passw0rd!2026
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: Ci_Passw0rd!2026
+        ports:
+          - 1433:1433
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release
+
+      - name: Wait for SQL Server and run the CREATE TABLE script
+        run: |
+          CID=$(docker ps --filter ancestor=mcr.microsoft.com/mssql/server:2022-latest -q | head -n1)
+          SQLCMD=/opt/mssql-tools18/bin/sqlcmd
+          for i in $(seq 1 40); do
+            docker exec "$CID" $SQLCMD -S localhost -U sa -P "$SA_PASSWORD" -C -Q "SELECT 1" && break
+            sleep 3
+          done
+          docker cp db/001_create_appuser.sql "$CID":/tmp/001_create_appuser.sql
+          docker exec "$CID" $SQLCMD -S localhost -U sa -P "$SA_PASSWORD" -C -b -i /tmp/001_create_appuser.sql
+
+      - name: Test
+        env:
+          STOCKIA_TEST_CONNECTION: Server=localhost,1433;Database=StockiaDb;User Id=sa;Password=Ci_Passw0rd!2026;TrustServerCertificate=True
+        run: dotnet test --no-build -c Release
