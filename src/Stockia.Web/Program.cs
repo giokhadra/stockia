@@ -11,6 +11,7 @@ builder.Services.AddDbContext<StockiaDbContext>(o =>
     o.UseSqlServer(builder.Configuration.GetConnectionString("StockiaDb")));
 builder.Services.AddScoped<IUserRepository, EfUserRepository>();
 builder.Services.AddScoped<CompanyService>();
+builder.Services.AddScoped<AssignmentService>();
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddScoped<LoginService>();
 
