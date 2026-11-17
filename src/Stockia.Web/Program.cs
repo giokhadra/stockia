@@ -4,11 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using Stockia.Web.Data;
 using Stockia.Web.Services;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<StockiaDbContext>(o =>
     o.UseSqlServer(builder.Configuration.GetConnectionString("StockiaDb")));
 builder.Services.AddScoped<IUserRepository, EfUserRepository>();
+builder.Services.AddScoped<CompanyService>();
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddScoped<LoginService>();
 

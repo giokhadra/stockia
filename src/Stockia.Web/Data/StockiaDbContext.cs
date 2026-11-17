@@ -18,10 +18,12 @@ public class StockiaDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder b)
     {
-        b.Entity<Company>(e =>
+                b.Entity<Company>(e =>
         {
             e.ToTable("Company");
             e.Property(c => c.Name).HasMaxLength(200).IsRequired();
+            e.Property(c => c.TaxNumber).HasMaxLength(30);
+            e.Property(c => c.BaseCurrency).HasMaxLength(3).IsFixedLength().IsRequired();
         });
 
         b.Entity<AppUser>(e =>
