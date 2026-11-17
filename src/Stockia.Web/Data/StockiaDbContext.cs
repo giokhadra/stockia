@@ -12,6 +12,7 @@ public class StockiaDbContext : DbContext
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<Assignment> Assignments => Set<Assignment>();
         public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<FiscalPeriod> FiscalPeriods => Set<FiscalPeriod>();
 
     // SR-39: every decimal in the model is DECIMAL(18,2) unless a property says otherwise.
     protected override void ConfigureConventions(ModelConfigurationBuilder cb)
@@ -62,6 +63,15 @@ public class StockiaDbContext : DbContext
             e.Property(a => a.Type).HasMaxLength(20).IsRequired();
             e.HasOne<Company>().WithMany().HasForeignKey(a => a.CompanyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Account>().WithMany().HasForeignKey(a => a.ParentId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // SR-18: twelve monthly periods per company; one period per company and start date.
+        b.Entity<FiscalPeriod>(e =>
+        {
+            e.ToTable("FiscalPeriod");
+            e.HasIndex(p => new { p.CompanyId, p.StartDate }).IsUnique();
+            e.Property(p => p.Status).HasMaxLength(10).IsRequired();
+            e.HasOne(p => p.Company).WithMany().HasForeignKey(p => p.CompanyId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

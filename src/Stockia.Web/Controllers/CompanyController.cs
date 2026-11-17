@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Stockia.Web.Domain;
 using Stockia.Web.Services;
 
 namespace Stockia.Web.Controllers;
@@ -12,6 +13,10 @@ public class CompanyForm
     public string? Error { get; set; }
 }
 
+public record CompanyListViewModel(List<Company> Companies, Dictionary<int, int> PeriodCounts);
+
+public record CompanyPeriodsViewModel(Company Company, List<FiscalPeriod> Periods);
+
 [Authorize]
 public class CompanyController : Controller
 {
@@ -19,7 +24,8 @@ public class CompanyController : Controller
     public CompanyController(CompanyService companies) => _companies = companies;
 
     [HttpGet]
-    public async Task<IActionResult> Index() => View(await _companies.ListAsync());
+    public async Task<IActionResult> Index() =>
+        View(new CompanyListViewModel(await _companies.ListAsync(), await _companies.PeriodCountsAsync()));
 
     [HttpGet]
     public IActionResult Create() => View(new CompanyForm());
@@ -35,5 +41,14 @@ public class CompanyController : Controller
             return View(form);
         }
         return RedirectToAction(nameof(Index));
+    }
+
+    /// <summary>SR-18: the fiscal periods of one company.</summary>
+    [HttpGet]
+    public async Task<IActionResult> Periods(int id)
+    {
+        var company = await _companies.FindAsync(id);
+        if (company is null) return NotFound();
+        return View(new CompanyPeriodsViewModel(company, await _companies.PeriodsOfAsync(id)));
     }
 }

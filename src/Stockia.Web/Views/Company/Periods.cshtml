@@ -1,0 +1,30 @@
+@using System.Globalization
+@model Stockia.Web.Controllers.CompanyPeriodsViewModel
+@{ ViewData["Title"] = "Fiscal periods"; }
+<div class="page">
+    <h1>@Model.Company.Name: fiscal periods</h1>
+    <p>Base currency: @Model.Company.BaseCurrency</p>
+
+    @if (Model.Periods.Count == 0)
+    {
+        <p class="empty-text">This company has no fiscal periods yet.</p>
+    }
+    else
+    {
+        <table class="data-table" id="periods">
+            <thead><tr><th>Month</th><th>From</th><th>To</th><th>Status</th></tr></thead>
+            <tbody>
+            @foreach (var p in Model.Periods)
+            {
+                <tr class="period">
+                    <td>@p.StartDate.ToString("MMMM yyyy", CultureInfo.InvariantCulture)</td>
+                    <td>@p.StartDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)</td>
+                    <td>@p.EndDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)</td>
+                    <td>@p.Status</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+    <p><a asp-action="Index">Back to companies</a></p>
+</div>
