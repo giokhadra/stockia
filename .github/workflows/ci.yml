@@ -25,7 +25,7 @@ jobs:
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
 
-      - name: Wait for SQL Server and run the CREATE TABLE scripts
+            - name: Wait for SQL Server and run the CREATE TABLE scripts
         run: |
           CID=$(docker ps --filter ancestor=mcr.microsoft.com/mssql/server:2022-latest -q | head -n1)
           SQLCMD=/opt/mssql-tools18/bin/sqlcmd
@@ -35,10 +35,11 @@ jobs:
           done
           for f in db/*.sql; do
             name=$(basename "$f")
+            DB=""
+            if [ "$name" != "001_create_appuser.sql" ]; then DB="-d StockiaDb"; fi
             docker cp "$f" "$CID":/tmp/"$name"
-            docker exec "$CID" $SQLCMD -S localhost -U sa -P "$SA_PASSWORD" -C -b -i /tmp/"$name"
+            docker exec "$CID" $SQLCMD -S localhost -U sa -P "$SA_PASSWORD" -C $DB -b -i /tmp/"$name"
           done
-
       - name: Test
         env:
           STOCKIA_TEST_CONNECTION: Server=localhost,1433;Database=StockiaDb;User Id=sa;Password=Ci_Passw0rd!2026;TrustServerCertificate=True

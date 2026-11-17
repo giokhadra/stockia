@@ -1,4 +1,5 @@
-
+USE StockiaDb;
+GO
 IF OBJECT_ID('dbo.Currency') IS NULL
 CREATE TABLE dbo.Currency (
     Code CHAR(3) NOT NULL PRIMARY KEY,
