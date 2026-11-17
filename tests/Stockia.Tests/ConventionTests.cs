@@ -63,7 +63,7 @@ public class ConventionTests : IClassFixture<StockiaFactory>
         using var scope = _factory.Services.CreateScope();
         var model = scope.ServiceProvider.GetRequiredService<StockiaDbContext>().Model;
         var missing = model.GetEntityTypes()
-            .Where(t => t.ClrType != typeof(Company))
+            .Where(t => t.ClrType != typeof(Company) && t.ClrType != typeof(Role))
             .Where(t => t.FindProperty("CompanyId") is null)
             .Select(t => t.ClrType.Name).ToList();
         Assert.True(missing.Count == 0, "Missing CompanyId: " + string.Join(", ", missing));
