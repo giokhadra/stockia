@@ -16,6 +16,7 @@ public sealed class SqlServerFactAttribute : FactAttribute
     }
 }
 
+[Collection("SqlServer")]
 public class SqlServerTableTests
 {
     [SqlServerFact]
@@ -25,7 +26,7 @@ public class SqlServerTableTests
             .UseSqlServer(Environment.GetEnvironmentVariable("STOCKIA_TEST_CONNECTION")).Options;
         using var db = new StockiaDbContext(options);
 
-        DbSeeder.Seed(db, new Pbkdf2PasswordHasher());
+        DbSeeder.Seed(db, new BcryptPasswordHasher());   // SR-34: the app's hasher
 
         var user = await new EfUserRepository(db).FindByUsernameAsync(DbSeeder.SeedUsername);
         Assert.NotNull(user);

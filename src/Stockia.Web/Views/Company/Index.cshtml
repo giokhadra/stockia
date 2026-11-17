@@ -1,21 +1,24 @@
-@model List<Stockia.Web.Domain.Company>
+@model Stockia.Web.Controllers.CompanyListViewModel
 @{ ViewData["Title"] = "Companies"; }
 <div class="page">
     <h1>Companies</h1>
     <a class="btn-link" asp-action="Create">+ New company</a>
 
-    @if (Model.Count == 0)
+    @if (Model.Companies.Count == 0)
     {
         <p class="empty-text">No companies yet.</p>
     }
     else
     {
         <table class="data-table">
-            <thead><tr><th>Name</th><th>Tax number</th><th>Base currency</th></tr></thead>
+            <thead><tr><th>Name</th><th>Tax number</th><th>Base currency</th><th>Fiscal periods</th></tr></thead>
             <tbody>
-            @foreach (var c in Model)
+            @foreach (var c in Model.Companies)
             {
-                <tr><td>@c.Name</td><td>@c.TaxNumber</td><td>@c.BaseCurrency</td></tr>
+                <tr>
+                    <td>@c.Name</td><td>@c.TaxNumber</td><td>@c.BaseCurrency</td>
+                    <td><a asp-action="Periods" asp-route-id="@c.Id">@Model.PeriodCounts.GetValueOrDefault(c.Id) months</a></td>
+                </tr>
             }
             </tbody>
         </table>

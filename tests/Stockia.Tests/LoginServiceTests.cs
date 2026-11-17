@@ -12,6 +12,11 @@ public class LoginServiceTests
         public FakeRepo(AppUser user) => _user = user;
         public Task<AppUser?> FindByUsernameAsync(string username) =>
             Task.FromResult<AppUser?>(username == _user.Username ? _user : null);
+        public Task UpdatePasswordHashAsync(AppUser user, string newHash)
+        {
+            user.PasswordHash = newHash;
+            return Task.CompletedTask;
+        }
     }
 
     private static LoginService Build()

@@ -19,6 +19,7 @@ public static class DbSeeder
         {
             company = new Company { Name = SeedCompanyName };
             db.Companies.Add(company);
+            db.FiscalPeriods.AddRange(FiscalPeriod.MonthsOf(company, DateTime.UtcNow.Year));   // SR-18
             db.SaveChanges();
         }
 

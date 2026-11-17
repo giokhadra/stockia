@@ -31,7 +31,11 @@ public class ConventionTests : IClassFixture<StockiaFactory>
             .ToList();
         Assert.NotEmpty(endpoints);
 
-        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost"),   // SR-34: the app is used over https
+            AllowAutoRedirect = false
+        });
         foreach (var e in endpoints)
         {
             var cad = e.Metadata.GetMetadata<ControllerActionDescriptor>()!;

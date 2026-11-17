@@ -29,8 +29,10 @@ public class AuthFlowTests : IClassFixture<StockiaFactory>
     private readonly StockiaFactory _factory;
     public AuthFlowTests(StockiaFactory factory) => _factory = factory;
 
+    // Cookies are HTTPS-only (SR-34), so the client talks to the app over https.
     private HttpClient NewClient() => _factory.CreateClient(new WebApplicationFactoryClientOptions
     {
+        BaseAddress = new Uri("https://localhost"),
         AllowAutoRedirect = false,
         HandleCookies = true
     });
