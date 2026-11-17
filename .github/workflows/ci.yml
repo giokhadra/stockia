@@ -35,8 +35,10 @@ jobs:
           done
           for f in db/*.sql; do
             name=$(basename "$f")
+            DB=""
+            if [ "$name" != "001_create_appuser.sql" ]; then DB="-d StockiaDb"; fi
             docker cp "$f" "$CID":/tmp/"$name"
-            docker exec "$CID" $SQLCMD -S localhost -U sa -P "$SA_PASSWORD" -C -b -i /tmp/"$name"
+            docker exec "$CID" $SQLCMD -S localhost -U sa -P "$SA_PASSWORD" -C $DB -b -i /tmp/"$name"
           done
 
       - name: Test

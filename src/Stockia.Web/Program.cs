@@ -12,6 +12,7 @@ builder.Services.AddDbContext<StockiaDbContext>(o =>
 builder.Services.AddScoped<IUserRepository, EfUserRepository>();
 builder.Services.AddScoped<CompanyService>();
 builder.Services.AddScoped<AssignmentService>();
+builder.Services.AddScoped<AccountService>();
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddScoped<LoginService>();
 
