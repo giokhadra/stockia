@@ -1,0 +1,23 @@
+@model Stockia.Web.Controllers.AccountsPageViewModel
+@using Stockia.Web.Services
+@{ ViewData["Title"] = "Edit account"; }
+<div class="page">
+    <h1>Edit account @Model.Code</h1>
+    <form class="card-form" asp-action="Edit" method="post">
+        @if (Model.Error is not null) { <p class="error-text">@Model.Error</p> }
+        <input type="hidden" asp-for="Id" />
+        <label>Name <input asp-for="Name" /></label>
+        <label>Type
+            <select asp-for="Type" asp-items="@(new SelectList(AccountService.Types))"></select>
+        </label>
+        <label>Parent account (optional)
+                      <select asp-for="ParentId" asp-items="@(Model.Accounts.Select(a => new SelectListItem(a.Code + " - " + a.Name, a.Id.ToString())))">
+                <option value="">(none)</option>
+            </select>
+        </label>
+        <div class="form-actions">
+            <button type="submit">Save</button>
+            <a asp-action="Index">Cancel</a>
+        </div>
+    </form>
+</div>

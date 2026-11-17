@@ -1,5 +1,3 @@
-USE StockiaDb;
-GO
 
 IF OBJECT_ID('dbo.Currency') IS NULL
 CREATE TABLE dbo.Currency (
