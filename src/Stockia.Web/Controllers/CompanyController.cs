@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Stockia.Web.Domain;
+using Stockia.Web.Security;
 using Stockia.Web.Services;
 
 namespace Stockia.Web.Controllers;
@@ -18,14 +19,26 @@ public record CompanyListViewModel(List<Company> Companies, Dictionary<int, int>
 public record CompanyPeriodsViewModel(Company Company, List<FiscalPeriod> Periods);
 
 [Authorize]
+[RequireCompanyRole(CompanyRoles.Administrator)]
 public class CompanyController : Controller
 {
     private readonly CompanyService _companies;
-    public CompanyController(CompanyService companies) => _companies = companies;
+    private readonly AssignmentService _assignments;
+
+    public CompanyController(CompanyService companies, AssignmentService assignments)
+    {
+        _companies = companies;
+        _assignments = assignments;
+    }
 
     [HttpGet]
-    public async Task<IActionResult> Index() =>
-        View(new CompanyListViewModel(await _companies.ListAsync(), await _companies.PeriodCountsAsync()));
+    public async Task<IActionResult> Index()
+    {
+        if (User.GetUserId() is not int userId) return Challenge();
+        return View(new CompanyListViewModel(
+            await _companies.ListForUserAsync(userId),
+            await _companies.PeriodCountsForUserAsync(userId)));
+    }
 
     [HttpGet]
     public IActionResult Create() => View(new CompanyForm());
@@ -33,7 +46,9 @@ public class CompanyController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CompanyForm form)
     {
-        var (company, error) = await _companies.CreateAsync(form.Name, form.TaxNumber, form.BaseCurrency);
+        if (User.GetUserId() is not int userId) return Challenge();
+        var (company, error) = await _companies.CreateAsync(
+            form.Name, form.TaxNumber, form.BaseCurrency, userId);
         if (company is null)
         {
             ModelState.Clear();
@@ -43,12 +58,13 @@ public class CompanyController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    /// <summary>SR-18: the fiscal periods of one company.</summary>
+    /// <summary>SR-18: the fiscal periods of one company the signed-in user is assigned to.</summary>
     [HttpGet]
     public async Task<IActionResult> Periods(int id)
     {
+        if (User.GetUserId() is not int userId) return Challenge();
         var company = await _companies.FindAsync(id);
-        if (company is null) return NotFound();
+        if (company is null || !await _assignments.IsAssignedAsync(userId, id)) return NotFound();
         return View(new CompanyPeriodsViewModel(company, await _companies.PeriodsOfAsync(id)));
     }
 }

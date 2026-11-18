@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Stockia.Web.Data;
+using Stockia.Web.Security;
 using Stockia.Web.Services;
 
 
@@ -19,6 +20,8 @@ builder.Services.AddScoped<AssignmentService>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();   // SR-34: bcrypt, work factor 12
 builder.Services.AddScoped<LoginService>();
+builder.Services.AddScoped<CompanyAccessService>();
+builder.Services.AddScoped<CompanyAccessFilter>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(o =>
@@ -48,7 +51,8 @@ builder.Services.AddHsts(o =>
 builder.Services.AddAuthorization(o =>
     o.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
-builder.Services.AddControllersWithViews();
+// SR-33 / d5: every page and API checks the chosen company and the user's role in it.
+builder.Services.AddControllersWithViews(o => o.Filters.AddService<CompanyAccessFilter>(int.MinValue));
 
 var app = builder.Build();
 

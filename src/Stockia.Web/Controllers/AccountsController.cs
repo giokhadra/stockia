@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Stockia.Web.Domain;
+using Stockia.Web.Security;
 using Stockia.Web.Services;
 
 namespace Stockia.Web.Controllers;
@@ -30,6 +31,7 @@ public class AccountsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RequireCompanyRole(CompanyRoles.Administrator, CompanyRoles.ChiefAccountant, CompanyRoles.Accountant)]
     public async Task<IActionResult> Create(AccountsPageViewModel form)
     {
         if (User.GetCompanyId() is not int companyId) return Forbid();
@@ -45,6 +47,7 @@ public class AccountsController : Controller
     }
 
     [HttpGet]
+    [RequireCompanyRole(CompanyRoles.Administrator, CompanyRoles.ChiefAccountant, CompanyRoles.Accountant)]
     public async Task<IActionResult> Edit(int id)
     {
         if (User.GetCompanyId() is not int companyId) return Forbid();
@@ -58,6 +61,7 @@ public class AccountsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RequireCompanyRole(CompanyRoles.Administrator, CompanyRoles.ChiefAccountant, CompanyRoles.Accountant)]
     public async Task<IActionResult> Edit(AccountsPageViewModel form)
     {
         if (User.GetCompanyId() is not int companyId) return Forbid();
@@ -73,6 +77,7 @@ public class AccountsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RequireCompanyRole(CompanyRoles.Administrator, CompanyRoles.ChiefAccountant, CompanyRoles.Accountant)]
     public async Task<IActionResult> SetActive(int id, bool active)
     {
         if (User.GetCompanyId() is not int companyId) return Forbid();

@@ -1,6 +1,9 @@
 using System.Security.Claims;
+using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using Stockia.Web.Data;
 using Stockia.Web.Domain;
+using Stockia.Web.Security;
 using Stockia.Web.Services;
 using Xunit;
 
@@ -50,6 +54,38 @@ public class ConventionTests : IClassFixture<StockiaFactory>
                         $"{path} is reachable without login (status {(int)r.StatusCode})");
         }
     }
+
+    // d5: every write action names the roles allowed to call it, so a viewer never writes by accident.
+    [Fact]
+    public void Every_write_action_declares_the_company_roles_it_requires()
+    {
+        var actions = _factory.Services.GetRequiredService<IActionDescriptorCollectionProvider>()
+            .ActionDescriptors.Items.OfType<ControllerActionDescriptor>();
+
+        var missing = new List<string>();
+        foreach (var action in actions)
+        {
+            if (!IsWrite(action)) continue;
+            if (Has<AllowAnonymousAttribute>(action) || Has<AllowNoCompanyAttribute>(action)) continue;
+
+            var roles = action.MethodInfo.GetCustomAttributes<RequireCompanyRoleAttribute>(true)
+                .Concat(action.ControllerTypeInfo.GetCustomAttributes<RequireCompanyRoleAttribute>(true));
+            if (!roles.Any()) missing.Add($"{action.ControllerName}.{action.ActionName}");
+        }
+
+        Assert.True(missing.Count == 0,
+            "Write actions without [RequireCompanyRole]: " + string.Join(", ", missing));
+    }
+
+    private static bool IsWrite(ControllerActionDescriptor action) =>
+        action.MethodInfo.GetCustomAttributes<HttpPostAttribute>(true).Any()
+        || action.MethodInfo.GetCustomAttributes<HttpPutAttribute>(true).Any()
+        || action.MethodInfo.GetCustomAttributes<HttpPatchAttribute>(true).Any()
+        || action.MethodInfo.GetCustomAttributes<HttpDeleteAttribute>(true).Any();
+
+    private static bool Has<T>(ControllerActionDescriptor action) where T : Attribute =>
+        action.MethodInfo.GetCustomAttributes<T>(true).Any()
+        || action.ControllerTypeInfo.GetCustomAttributes<T>(true).Any();
 
     // d5: users carry a company, and every business table must have CompanyId.
     [Fact]

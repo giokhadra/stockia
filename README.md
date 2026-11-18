@@ -16,8 +16,12 @@
    (tests use an in-memory database; the SQL Server tests are skipped unless `STOCKIA_TEST_CONNECTION` is set, as CI does).
 7. Run: `dotnet run --project src/Stockia.Web` (or the `https` profile in Visual Studio) and open
    `https://localhost:7180`; `http://localhost:5180` redirects there.
-8. Seeded development login: `admin` / `Admin#2026` (created on first start if AppUser is empty).
+8. Seeded development logins on the demo company: `admin` / `Admin#2026` (Administrator),
+   `viewer` / `Viewer#2026` (Viewer) and `accountant` / `Accountant#2026` (Accountant),
+   created on first start when missing.
    A password stored before bcrypt is re-hashed with bcrypt at its first successful login.
+   After login a user with one assignment enters that company; a user with several chooses one.
+   Every page and API checks the chosen company and the role held there; a refused request returns 403 (SR-33).
 
 ## Palette
 `#D4AF37` gold, `#FFFFFF` white, `#1A1A1A` charcoal (CSS variables in `src/Stockia.Web/wwwroot/css/site.css`).
