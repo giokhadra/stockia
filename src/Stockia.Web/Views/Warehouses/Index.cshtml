@@ -1,0 +1,31 @@
+@model Stockia.Web.Controllers.WarehousesPageViewModel
+@{ ViewData["Title"] = "Warehouses"; }
+<div class="page">
+    <h1>Warehouses</h1>
+
+    <form class="card-form" asp-action="Create" method="post">
+        @if (Model.Error is not null) { <p class="error-text">@Model.Error</p> }
+        <label>Name <input asp-for="Name" /></label>
+        <div class="form-actions"><button type="submit">Add warehouse</button></div>
+    </form>
+
+    @if (Model.Warehouses.Count == 0)
+    {
+        <p class="empty-text">No warehouses yet.</p>
+    }
+    else
+    {
+        <table class="data-table">
+            <thead><tr><th>Name</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var w in Model.Warehouses)
+            {
+                <tr>
+                    <td>@w.Name</td>
+                    <td><a asp-action="Edit" asp-route-id="@w.Id">Edit</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
