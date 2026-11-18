@@ -1,0 +1,17 @@
+@model Stockia.Web.Controllers.CompanyForm
+@{ ViewData["Title"] = "New company"; }
+<div class="page">
+    <h1>New company</h1>
+    <form class="card-form" asp-action="Create" method="post">
+        @if (Model.Error is not null) { <p class="error-text">@Model.Error</p> }
+        <label>Name <input asp-for="Name" /></label>
+        <label>Tax number (optional) <input asp-for="TaxNumber" /></label>
+        <label>Base currency
+            <select asp-for="BaseCurrency" asp-items="@(new SelectList(Stockia.Web.Services.CompanyService.Currencies))"></select>
+        </label>
+        <div class="form-actions">
+            <button type="submit">Save</button>
+            <a asp-action="Index">Cancel</a>
+        </div>
+    </form>
+</div>
