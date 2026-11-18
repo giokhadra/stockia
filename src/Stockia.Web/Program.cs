@@ -26,7 +26,8 @@ builder.Services.AddScoped<CompanyAccessService>();
 builder.Services.AddScoped<CompanyAccessFilter>();
 builder.Services.AddScoped<ItemService>();
 builder.Services.AddScoped<WarehouseService>();
-
+builder.Services.AddScoped<AuditService>();
+builder.Services.AddScoped<JournalReversalService>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(o =>
     {

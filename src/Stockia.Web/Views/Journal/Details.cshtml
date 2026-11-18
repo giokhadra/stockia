@@ -3,12 +3,16 @@
 @{
     ViewData["Title"] = "Journal entry " + Model.Reference;
     string Amt(decimal v) => v == 0 ? "" : v.ToString("N2");
+    var history = ViewData["History"] as List<AuditLog> ?? new List<AuditLog>();
+    var reversedById = ViewData["ReversedById"] as int?;
+    var reverseError = ViewData["ReverseError"] as string;
 }
 <main class="page">
   <p>
     <a asp-controller="Home" asp-action="Index">Home</a> |
     <a asp-controller="Journal" asp-action="New">New entry</a> |
-    <a asp-controller="Ledger" asp-action="Index">Ledgers</a>
+    <a asp-controller="Ledger" asp-action="Index">Ledgers</a> |
+    <a asp-controller="Audit" asp-action="Index">Audit log</a>
   </p>
   <h1 class="brand">Journal entry saved</h1>
 
@@ -16,6 +20,14 @@
     <dt>Date</dt><dd>@Model.Date.ToString("yyyy-MM-dd")</dd>
     <dt>Reference</dt><dd id="entry-reference">@Model.Reference</dd>
     <dt>Description</dt><dd>@Model.Description</dd>
+    @if (Model.ReversesEntryId is int original)
+    {
+      <dt>Reversal of</dt><dd><a asp-action="Details" asp-route-id="@original">entry @original</a></dd>
+    }
+    @if (reversedById is int reversal)
+    {
+      <dt>Reversed by</dt><dd id="reversed-by"><a asp-action="Details" asp-route-id="@reversal">entry @reversal</a></dd>
+    }
   </dl>
 
   <div class="grid-wrap">
@@ -38,4 +50,39 @@
       </tfoot>
     </table>
   </div>
+
+  @if (reverseError is not null) { <p class="error-text">@reverseError</p> }
+
+  @if (Model.ReversesEntryId is null && reversedById is null)
+  {
+    <p class="empty-text">A posted entry cannot be removed. To correct a mistake, reverse it.</p>
+    <form asp-action="Reverse" asp-route-id="@Model.Id" method="post">
+      <button type="submit" class="inline-btn">Reverse this entry</button>
+    </form>
+  }
+
+  <h2>History</h2>
+  @if (history.Count == 0)
+  {
+    <p class="empty-text">No history was recorded for this entry.</p>
+  }
+  else
+  {
+    <div class="grid-wrap">
+      <table class="grid">
+        <thead><tr><th>When (UTC)</th><th>Who</th><th>What</th><th>Details</th></tr></thead>
+        <tbody>
+          @foreach (var h in history)
+          {
+            <tr>
+              <td>@h.LogTime.ToString("yyyy-MM-dd HH:mm")</td>
+              <td>@h.User?.DisplayName</td>
+              <td>@h.Action</td>
+              <td>@h.Details</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
 </main>
