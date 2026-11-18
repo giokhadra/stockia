@@ -12,6 +12,8 @@ public class JournalEntry
     public string Reference { get; set; } = "";
     public string Description { get; set; } = "";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        /// <summary>SR-6: set only on a reversal: the entry it reverses.</summary>
+    public int? ReversesEntryId { get; set; }
 
     public IReadOnlyCollection<JournalLine> Lines => _lines;
 
