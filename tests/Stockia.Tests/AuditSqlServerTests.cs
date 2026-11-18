@@ -18,6 +18,7 @@ public class AuditSqlServerTests
         var options = new DbContextOptionsBuilder<StockiaDbContext>()
             .UseSqlServer(Environment.GetEnvironmentVariable("STOCKIA_TEST_CONNECTION")).Options;
         using var db = new StockiaDbContext(options);
+         DbSeeder.Seed(db, new BcryptPasswordHasher());
 
         var (company, error) = await new CompanyService(db)
             .CreateAsync("SQL audit " + Guid.NewGuid().ToString("N")[..8], null, "USD");
