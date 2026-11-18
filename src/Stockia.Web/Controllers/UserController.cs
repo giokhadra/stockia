@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Stockia.Web.Domain;
+using Stockia.Web.Security;
 using Stockia.Web.Services;
 
 namespace Stockia.Web.Controllers;
@@ -18,6 +19,7 @@ public class UsersPageViewModel
 }
 
 [Authorize]
+[RequireCompanyRole(CompanyRoles.Administrator)]
 public class UserController : Controller
 {
     private readonly AssignmentService _assignments;

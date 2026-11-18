@@ -21,6 +21,14 @@ public class AssignmentService
     public Task<List<Company>> CompaniesOfAsync(int userId) =>
         _db.Assignments.Where(a => a.UserId == userId).Select(a => a.Company!).OrderBy(c => c.Name).ToListAsync();
 
+    /// <summary>SR-33: every company the user may choose, with their role in each.</summary>
+    public Task<List<Assignment>> ForUserAsync(int userId) =>
+        _db.Assignments.Include(a => a.Company).Include(a => a.Role)
+            .Where(a => a.UserId == userId).OrderBy(a => a.Company!.Name).ToListAsync();
+
+    public Task<bool> IsAssignedAsync(int userId, int companyId) =>
+        _db.Assignments.AnyAsync(a => a.UserId == userId && a.CompanyId == companyId);
+
     public async Task<(Assignment? Assignment, string? Error)> AssignAsync(int userId, int companyId, int roleId)
     {
         if (!await _db.AppUsers.AnyAsync(u => u.Id == userId)) return (null, "Choose an existing user.");

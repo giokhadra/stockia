@@ -17,12 +17,18 @@ public static class TestClient
         });
 
     /// <summary>Opens the page at <paramref name="path"/>, then posts its form with the antiforgery token.</summary>
-    public static async Task<HttpResponseMessage> PostFormAsync(HttpClient client, string path, Dictionary<string, string> fields)
+    public static Task<HttpResponseMessage> PostFormAsync(HttpClient client, string path, Dictionary<string, string> fields) =>
+        PostFormAsync(client, path, path, fields);
+
+    /// <summary>Opens <paramref name="tokenPage"/> for the antiforgery token, then posts it to
+    /// <paramref name="postPath"/> (a page whose form targets a different action).</summary>
+    public static async Task<HttpResponseMessage> PostFormAsync(
+        HttpClient client, string tokenPage, string postPath, Dictionary<string, string> fields)
     {
-        var html = await client.GetStringAsync(path);
+        var html = await client.GetStringAsync(tokenPage);
         fields["__RequestVerificationToken"] =
             Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value;
-        return await client.PostAsync(path, new FormUrlEncodedContent(fields));
+        return await client.PostAsync(postPath, new FormUrlEncodedContent(fields));
     }
 
     public static Task<HttpResponseMessage> LoginAsync(HttpClient client,
