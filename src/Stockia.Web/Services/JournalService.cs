@@ -9,10 +9,12 @@ public record NewJournalLine(int AccountId, decimal Debit, decimal Credit);
 
 public record NewJournalEntry(DateTime Date, string? Reference, string? Description, IReadOnlyList<NewJournalLine> Lines);
 
-public record PostResult(bool Succeeded, int EntryId, IReadOnlyList<string> Errors)
+/// <summary>Difference (SR-3) is set when the entry was refused because it is not balanced:
+/// total debits minus total credits (positive: debits are higher).</summary>
+public record PostResult(bool Succeeded, int EntryId, IReadOnlyList<string> Errors, decimal? Difference = null)
 {
     public static PostResult Ok(int entryId) => new(true, entryId, Array.Empty<string>());
-    public static PostResult Fail(IReadOnlyList<string> errors) => new(false, 0, errors);
+    public static PostResult Fail(IReadOnlyList<string> errors, decimal? difference = null) => new(false, 0, errors, difference);
 }
 
 public record AccountLedger(Account Account, IReadOnlyList<LedgerRow> Rows, decimal TotalDebit, decimal TotalCredit)
@@ -134,11 +136,17 @@ public class JournalService
             entry.AddLine(line.AccountId, debit, credit);
         }
 
+        // SR-3: refuse to post an entry whose total debits differ from its total credits, and say by how much.
+        decimal? difference = null;
         if (errors.Count == 0 && !entry.IsBalanced)
+        {
+            difference = entry.Difference;
             errors.Add($"Debits ({entry.TotalDebit.ToString("0.00", CultureInfo.InvariantCulture)}) and credits " +
-                       $"({entry.TotalCredit.ToString("0.00", CultureInfo.InvariantCulture)}) must be equal.");
+                       $"({entry.TotalCredit.ToString("0.00", CultureInfo.InvariantCulture)}) must be equal. " +
+                       $"The difference is {Math.Abs(entry.Difference).ToString("0.00", CultureInfo.InvariantCulture)}.");
+        }
 
-        if (errors.Count > 0) return PostResult.Fail(errors);
+        if (errors.Count > 0) return PostResult.Fail(errors, difference);
 
         await _repo.AddAsync(entry);
         return PostResult.Ok(entry.Id);

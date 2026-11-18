@@ -33,6 +33,9 @@ public class JournalEntry
     public decimal TotalDebit => Money.Total(_lines.Select(l => l.Debit));
     public decimal TotalCredit => Money.Total(_lines.Select(l => l.Credit));
 
+    /// <summary>SR-3: total debits minus total credits (positive: debits are higher). Zero when the entry is balanced.</summary>
+    public decimal Difference => TotalDebit - TotalCredit;
+
     /// <summary>Amounts have 2 decimals, so "match to 0.01" means the totals are equal.</summary>
-    public bool IsBalanced => TotalDebit == TotalCredit;
+    public bool IsBalanced => Difference == 0m;
 }
