@@ -13,6 +13,8 @@ public class StockiaDbContext : DbContext
     public DbSet<Assignment> Assignments => Set<Assignment>();
         public DbSet<Account> Accounts => Set<Account>();
     public DbSet<FiscalPeriod> FiscalPeriods => Set<FiscalPeriod>();
+    public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
+    public DbSet<JournalLine> JournalLines => Set<JournalLine>();
 
     // SR-39: every decimal in the model is DECIMAL(18,2) unless a property says otherwise.
     protected override void ConfigureConventions(ModelConfigurationBuilder cb)
@@ -72,6 +74,26 @@ public class StockiaDbContext : DbContext
             e.HasIndex(p => new { p.CompanyId, p.StartDate }).IsUnique();
             e.Property(p => p.Status).HasMaxLength(10).IsRequired();
             e.HasOne(p => p.Company).WithMany().HasForeignKey(p => p.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // SR-2: manual journal entries. Every table has CompanyId (SR-33); amounts use DECIMAL(18,2) (SR-39).
+        b.Entity<JournalEntry>(e =>
+        {
+            e.ToTable("JournalEntry");
+            e.Property(j => j.Date).HasColumnType("date");
+            e.Property(j => j.Reference).HasMaxLength(50).IsRequired();
+            e.Property(j => j.Description).HasMaxLength(500).IsRequired();
+            e.HasOne<Company>().WithMany().HasForeignKey(j => j.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(j => j.Lines).WithOne().HasForeignKey(l => l.JournalEntryId).IsRequired().OnDelete(DeleteBehavior.Cascade);
+            e.Navigation(j => j.Lines).UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        b.Entity<JournalLine>(e =>
+        {
+            e.ToTable("JournalLine");
+            e.HasIndex(l => l.AccountId);
+            e.HasOne<Company>().WithMany().HasForeignKey(l => l.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(l => l.Account).WithMany().HasForeignKey(l => l.AccountId).IsRequired().OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
