@@ -15,6 +15,8 @@ public class StockiaDbContext : DbContext
     public DbSet<FiscalPeriod> FiscalPeriods => Set<FiscalPeriod>();
     public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
     public DbSet<JournalLine> JournalLines => Set<JournalLine>();
+     public DbSet<Item> Items => Set<Item>();
+    public DbSet<Warehouse> Warehouses => Set<Warehouse>();
 
     // SR-39: every decimal in the model is DECIMAL(18,2) unless a property says otherwise.
     protected override void ConfigureConventions(ModelConfigurationBuilder cb)
@@ -95,5 +97,26 @@ public class StockiaDbContext : DbContext
             e.HasOne<Company>().WithMany().HasForeignKey(l => l.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
             e.HasOne(l => l.Account).WithMany().HasForeignKey(l => l.AccountId).IsRequired().OnDelete(DeleteBehavior.Restrict);
         });
+         // SR-13: items and warehouses of a company. CompanyId on both (SR-33); decimals are DECIMAL(18,2) by convention (SR-39).
+        b.Entity<Item>(e =>
+        {
+            e.ToTable("Item");
+            e.HasIndex(i => new { i.CompanyId, i.Code }).IsUnique();
+            e.Property(i => i.Code).HasMaxLength(20).IsRequired();
+            e.Property(i => i.Name).HasMaxLength(100).IsRequired();
+            e.Property(i => i.Unit).HasMaxLength(10).IsRequired();
+            e.Property(i => i.Category).HasMaxLength(50);
+            e.HasOne<Company>().WithMany().HasForeignKey(i => i.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Warehouse>(e =>
+        {
+            e.ToTable("Warehouse");
+            e.HasIndex(w => new { w.CompanyId, w.Name }).IsUnique();
+            e.Property(w => w.Name).HasMaxLength(100).IsRequired();
+            e.HasOne<Company>().WithMany().HasForeignKey(w => w.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+        });
     }
 }
+    
+

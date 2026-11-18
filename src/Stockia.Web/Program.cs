@@ -24,6 +24,8 @@ builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();   // SR-
 builder.Services.AddScoped<LoginService>();
 builder.Services.AddScoped<CompanyAccessService>();
 builder.Services.AddScoped<CompanyAccessFilter>();
+builder.Services.AddScoped<ItemService>();
+builder.Services.AddScoped<WarehouseService>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(o =>

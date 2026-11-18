@@ -1,0 +1,14 @@
+@model Stockia.Web.Controllers.WarehousesPageViewModel
+@{ ViewData["Title"] = "Edit warehouse"; }
+<div class="page">
+    <h1>Edit warehouse</h1>
+    <form class="card-form" asp-action="Edit" method="post">
+        @if (Model.Error is not null) { <p class="error-text">@Model.Error</p> }
+        <input type="hidden" asp-for="Id" />
+        <label>Name <input asp-for="Name" /></label>
+        <div class="form-actions">
+            <button type="submit">Save</button>
+            <a asp-action="Index">Cancel</a>
+        </div>
+    </form>
+</div>
