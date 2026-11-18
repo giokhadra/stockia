@@ -18,6 +18,8 @@ builder.Services.AddScoped<IUserRepository, EfUserRepository>();
 builder.Services.AddScoped<CompanyService>();
 builder.Services.AddScoped<AssignmentService>();
 builder.Services.AddScoped<AccountService>();
+builder.Services.AddScoped<IJournalRepository, EfJournalRepository>();
+builder.Services.AddScoped<JournalService>();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();   // SR-34: bcrypt, work factor 12
 builder.Services.AddScoped<LoginService>();
 builder.Services.AddScoped<CompanyAccessService>();
@@ -70,6 +72,9 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+// Amounts are typed as 1234.50 (type=number inputs): use one fixed culture so parsing never depends on the server's regional settings.
+app.UseRequestLocalization(new RequestLocalizationOptions()
+    .SetDefaultCulture("en-US").AddSupportedCultures("en-US").AddSupportedUICultures("en-US"));
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
