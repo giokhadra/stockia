@@ -1,5 +1,7 @@
 USE StockiaDb;
 GO
+SET QUOTED_IDENTIFIER ON;
+GO
 -- SR-6: AuditLog (who did what to an entry, and when) and the link from a reversal to the entry it reverses.
 -- Rules (SR-33): every business table has CompanyId. Entries are never deleted: they are reversed.
 IF OBJECT_ID('dbo.AuditLog') IS NULL
