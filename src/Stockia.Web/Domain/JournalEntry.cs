@@ -15,6 +15,11 @@ public class JournalEntry
         /// <summary>SR-6: set only on a reversal: the entry it reverses.</summary>
     public int? ReversesEntryId { get; set; }
 
+    /// <summary>SR-4: set only on an entry posted automatically: the kind of document it comes from
+    /// (see DocumentTypes) and the id of that document. Both are null on a manual entry.</summary>
+    public string? SourceType { get; set; }
+    public int? SourceId { get; set; }
+
     public IReadOnlyCollection<JournalLine> Lines => _lines;
 
     /// <summary>Adds a line; it takes the company of the entry. Exactly one of debit/credit must be above zero.</summary>

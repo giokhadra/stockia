@@ -20,6 +20,10 @@
     <dt>Date</dt><dd>@Model.Date.ToString("yyyy-MM-dd")</dd>
     <dt>Reference</dt><dd id="entry-reference">@Model.Reference</dd>
     <dt>Description</dt><dd>@Model.Description</dd>
+    @if (Model.SourceType is not null)
+    {
+      <dt>Posted automatically from</dt><dd id="entry-source">@Model.SourceType (document @Model.SourceId)</dd>
+    }
     @if (Model.ReversesEntryId is int original)
     {
       <dt>Reversal of</dt><dd><a asp-action="Details" asp-route-id="@original">entry @original</a></dd>
