@@ -30,3 +30,17 @@
 See `docs/DEFINITION_OF_DONE.md`. CI runs the CREATE TABLE script on a SQL Server container and then the tests.
 If you created `AppUser` with the first version of the script, drop `StockiaDb` and re-run `db/001_create_appuser.sql`
 (the script now also creates `Company` and `AppUser.CompanyId`).
+
+## Automatic posting (SR-4)
+A saved document gets its journal entry automatically; nobody retypes it. Run `db/009_posting_v1.sql` after pulling
+(it adds `SourceType` and `SourceId` to `JournalEntry`).
+
+- `PostingService.PostAsync(companyId, userId, document)` turns a `PostableDocument` into a balanced entry linked to the
+  document and posts it through `JournalService`, so it gets the checks of a manual entry (SR-1, SR-2, SR-3).
+  A document is posted only once. The invoice pages call it right after they save the invoice.
+- Rules (`PostingRules.cs`): a sales invoice is Dr receivable, Cr sales, Cr VAT collected; a purchase invoice is Dr stock
+  (stock items) or purchases (the rest), Dr VAT deductible, Cr payable. VAT is rounded line by line (SR-39).
+  Payments and receipts need their own `IPostingRule`: until then they are refused with a clear message.
+- Every company needs these accounts, **active**, in its chart of accounts, found by code (`PostingAccountCodes`):
+  411 receivable, 401 payable, 701 sales, 601 purchases, 311 stock, 4457 VAT collected, 4456 VAT deductible.
+  A missing account is named in the error. Change a code in `PostingAccountCodes` if the company's chart differs.
