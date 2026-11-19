@@ -134,6 +134,10 @@ public class StockiaDbContext : DbContext
         {
             e.HasOne<JournalEntry>().WithMany().HasForeignKey(j => j.ReversesEntryId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(j => j.ReversesEntryId).IsUnique().HasFilter("[ReversesEntryId] IS NOT NULL");
+
+            // SR-4: the document an automatic entry comes from; a document is posted only once per company.
+            e.Property(j => j.SourceType).HasMaxLength(30);
+            e.HasIndex(j => new { j.CompanyId, j.SourceType, j.SourceId }).IsUnique().HasFilter("[SourceType] IS NOT NULL");
         });
     }
 }

@@ -28,6 +28,12 @@ builder.Services.AddScoped<ItemService>();
 builder.Services.AddScoped<WarehouseService>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<JournalReversalService>();
+// SR-4: automatic posting of documents. Invoice pages call PostingService.PostAsync when a document is saved;
+// payments and receipts get their own IPostingRule later.
+builder.Services.AddScoped<IPostedDocuments, EfPostedDocuments>();
+builder.Services.AddScoped<IPostingRule, SalesInvoiceRule>();
+builder.Services.AddScoped<IPostingRule, PurchaseInvoiceRule>();
+builder.Services.AddScoped<PostingService>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(o =>
     {

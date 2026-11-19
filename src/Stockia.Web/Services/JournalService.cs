@@ -7,7 +7,9 @@ namespace Stockia.Web.Services;
 
 public record NewJournalLine(int AccountId, decimal Debit, decimal Credit);
 
-public record NewJournalEntry(DateTime Date, string? Reference, string? Description, IReadOnlyList<NewJournalLine> Lines);
+/// <summary>SourceType and SourceId (SR-4) are set only by automatic posting: the document the entry comes from.</summary>
+public record NewJournalEntry(DateTime Date, string? Reference, string? Description, IReadOnlyList<NewJournalLine> Lines,
+    string? SourceType = null, int? SourceId = null);
 
 /// <summary>Difference (SR-3) is set when the entry was refused because it is not balanced:
 /// total debits minus total credits (positive: debits are higher).</summary>
@@ -100,13 +102,18 @@ public class JournalService
         else if (reference.Length > 50) errors.Add("Reference can have at most 50 characters.");
         if (description.Length > 500) errors.Add("Description can have at most 500 characters.");
         if (input.Lines.Count < 2) errors.Add("An entry needs at least two lines.");
+        if ((input.SourceType is null) != (input.SourceId is null))
+            errors.Add("An entry linked to a document needs both the document type and the document id.");
+        if (input.SourceType is { Length: > 30 }) errors.Add("The document type can have at most 30 characters.");
 
         var entry = new JournalEntry
         {
             CompanyId = companyId,
             Date = input.Date.Date,
             Reference = reference,
-            Description = description
+            Description = description,
+            SourceType = input.SourceType,
+            SourceId = input.SourceId
         };
 
         for (var i = 0; i < input.Lines.Count; i++)
