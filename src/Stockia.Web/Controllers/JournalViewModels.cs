@@ -7,6 +7,8 @@ public class JournalLineForm
     public int AccountId { get; set; }
     public decimal? Debit { get; set; }
     public decimal? Credit { get; set; }
+    /// <summary>SR-19: empty means the base currency.</summary>
+    public string? Currency { get; set; }
 }
 
 /// <summary>What the browser posts (Date, Reference, Description, Lines[i].AccountId/Debit/Credit).</summary>
@@ -22,5 +24,8 @@ public class JournalNewViewModel
 {
     public JournalEntryForm Form { get; set; } = new();
     public List<Account> Accounts { get; set; } = new();
+    /// <summary>SR-19: the base currency and the currencies that have a rate.</summary>
+    public string BaseCurrency { get; set; } = "";
+    public List<string> Currencies { get; set; } = new();
     public List<string> Errors { get; set; } = new();
 }

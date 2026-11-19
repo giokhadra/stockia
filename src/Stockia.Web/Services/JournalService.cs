@@ -5,7 +5,9 @@ using Stockia.Web.Domain;
 
 namespace Stockia.Web.Services;
 
-public record NewJournalLine(int AccountId, decimal Debit, decimal Credit);
+/// <summary>Debit and Credit are in <paramref name="Currency"/>; null, empty or the base currency means the
+/// base currency (SR-19).</summary>
+public record NewJournalLine(int AccountId, decimal Debit, decimal Credit, string? Currency = null);
 
 /// <summary>SourceType and SourceId (SR-4) are set only by automatic posting: the document the entry comes from.</summary>
 public record NewJournalEntry(DateTime Date, string? Reference, string? Description, IReadOnlyList<NewJournalLine> Lines,
@@ -67,7 +69,14 @@ public class EfJournalRepository : IJournalRepository
 public class JournalService
 {
     private readonly IJournalRepository _repo;
-    public JournalService(IJournalRepository repo) => _repo = repo;
+    private readonly IExchangeRates? _rates;
+
+    /// <summary><paramref name="rates"/> is needed only for lines in a foreign currency (SR-19).</summary>
+    public JournalService(IJournalRepository repo, IExchangeRates? rates = null)
+    {
+        _repo = repo;
+        _rates = rates;
+    }
 
     /// <summary>All accounts of the company, active or not (a ledger can still be read after an account is deactivated).</summary>
     public Task<List<Account>> ListAccountsAsync(int companyId) => _repo.ListAccountsAsync(companyId);
@@ -116,6 +125,7 @@ public class JournalService
             SourceId = input.SourceId
         };
 
+        string? baseCurrency = null;
         for (var i = 0; i < input.Lines.Count; i++)
         {
             var line = input.Lines[i];
@@ -140,7 +150,43 @@ public class JournalService
                 errors.Add($"Line {n}: account {account.Code} is inactive.");
                 continue;
             }
-            entry.AddLine(line.AccountId, debit, credit);
+
+            // SR-19: a line in a foreign currency is converted at the rate of the entry date and keeps both amounts.
+            var currency = line.Currency?.Trim().ToUpperInvariant();
+            if (string.IsNullOrEmpty(currency))
+            {
+                entry.AddLine(line.AccountId, debit, credit);
+                continue;
+            }
+            if (!ExchangeRate.IsCurrencyCode(currency))
+            {
+                errors.Add($"Line {n}: the currency is a three-letter code, such as LBP or EUR.");
+                continue;
+            }
+            if (_rates is null)
+            {
+                errors.Add($"Line {n}: amounts in another currency cannot be converted here.");
+                continue;
+            }
+            baseCurrency ??= await _rates.BaseCurrencyAsync(companyId);
+            if (currency == baseCurrency)
+            {
+                entry.AddLine(line.AccountId, debit, credit);
+                continue;
+            }
+            var rate = await _rates.RateOnAsync(companyId, currency, input.Date);
+            if (rate is null)
+            {
+                errors.Add($"Line {n}: there is no {currency} rate on or before " +
+                           $"{input.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}. Add it on the Exchange rates page.");
+                continue;
+            }
+            if (ExchangeRate.Convert(debit + credit, rate.Rate) == 0m)
+            {
+                errors.Add($"Line {n}: the amount is less than 0.01 {baseCurrency} once converted.");
+                continue;
+            }
+            entry.AddForeignLine(line.AccountId, currency, debit, credit, rate.Rate);
         }
 
         // SR-3: refuse to post an entry whose total debits differ from its total credits, and say by how much.

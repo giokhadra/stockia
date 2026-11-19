@@ -109,7 +109,8 @@ public class ConventionTests : IClassFixture<StockiaFactory>
         Assert.True(missing.Count == 0, "Missing CompanyId: " + string.Join(", ", missing));
     }
 
-    // d6: money is DECIMAL(18,2) in the model; no float/double amounts.
+    // d6 (SR-39): money is DECIMAL(18,2) in the model; no float/double amounts. The only exception is an
+    // exchange rate (SR-19), DECIMAL(20,10), which is a factor and not an amount.
     [Fact]
     public void Every_decimal_property_is_precision_18_scale_2_and_no_floating_point_columns()
     {
@@ -122,8 +123,10 @@ public class ConventionTests : IClassFixture<StockiaFactory>
             Assert.NotEqual(typeof(float), type);
             if (type == typeof(decimal))
             {
-                Assert.Equal(18, prop.GetPrecision());
-                Assert.Equal(2, prop.GetScale());
+                var isRate = prop.Name == nameof(ExchangeRate.Rate) &&
+                             (prop.DeclaringType.ClrType == typeof(ExchangeRate) || prop.DeclaringType.ClrType == typeof(JournalLine));
+                Assert.True((isRate ? (20, 10) : (18, 2)) == (prop.GetPrecision(), prop.GetScale()),
+                    $"{prop.DeclaringType.ClrType.Name}.{prop.Name} is ({prop.GetPrecision()},{prop.GetScale()})");
             }
         }
     }

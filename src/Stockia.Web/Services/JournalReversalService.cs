@@ -57,7 +57,14 @@ public class JournalReversalService
         // Every debit becomes a credit and every credit a debit, on the same accounts. An account that has been
         // deactivated since is still allowed here: the reversal only undoes what was posted while it was active.
         foreach (var line in original.Lines.OrderBy(l => l.Id))
-            reversal.AddLine(line.AccountId, line.Credit, line.Debit);
+        {
+            // SR-19: the base amounts are swapped as they are (no new conversion), and the currency, foreign
+            // amount and rate are kept, so the reversal cancels the original exactly.
+            var copy = reversal.AddLine(line.AccountId, line.Credit, line.Debit);
+            copy.Currency = line.Currency;
+            copy.ForeignAmount = line.ForeignAmount;
+            copy.Rate = line.Rate;
+        }
 
         _db.JournalEntries.Add(reversal);
         _db.AuditLogs.Add(new AuditLog

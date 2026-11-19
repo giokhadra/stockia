@@ -19,6 +19,8 @@ builder.Services.AddScoped<CompanyService>();
 builder.Services.AddScoped<AssignmentService>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<IJournalRepository, EfJournalRepository>();
+builder.Services.AddScoped<ExchangeRateService>();
+builder.Services.AddScoped<IExchangeRates>(sp => sp.GetRequiredService<ExchangeRateService>());
 builder.Services.AddScoped<JournalService>();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();   // SR-34: bcrypt, work factor 12
 builder.Services.AddScoped<LoginService>();

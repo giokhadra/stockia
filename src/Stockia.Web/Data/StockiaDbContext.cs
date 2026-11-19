@@ -15,11 +15,12 @@ public class StockiaDbContext : DbContext
     public DbSet<FiscalPeriod> FiscalPeriods => Set<FiscalPeriod>();
     public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
     public DbSet<JournalLine> JournalLines => Set<JournalLine>();
+    public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
      public DbSet<Item> Items => Set<Item>();
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
-    // SR-39: every decimal in the model is DECIMAL(18,2) unless a property says otherwise.
+    // SR-39: every decimal in the model is DECIMAL(18,2) unless a property says otherwise (only exchange rates: DECIMAL(20,10)).
     protected override void ConfigureConventions(ModelConfigurationBuilder cb)
     {
         cb.Properties<decimal>().HavePrecision(18, 2);
@@ -97,6 +98,20 @@ public class StockiaDbContext : DbContext
             e.HasIndex(l => l.AccountId);
             e.HasOne<Company>().WithMany().HasForeignKey(l => l.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
             e.HasOne(l => l.Account).WithMany().HasForeignKey(l => l.AccountId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            // SR-19: a foreign line keeps its currency, foreign amount (DECIMAL(18,2) by convention) and rate.
+            e.Property(l => l.Currency).HasMaxLength(3).IsFixedLength().IsUnicode(false);
+            e.Property(l => l.Rate).HasPrecision(20, ExchangeRate.RateDecimals);
+        });
+
+        // SR-19: one rate per company, currency and date (SR-33: CompanyId).
+        b.Entity<ExchangeRate>(e =>
+        {
+            e.ToTable("ExchangeRate");
+            e.HasIndex(r => new { r.CompanyId, r.Currency, r.Date }).IsUnique();
+            e.Property(r => r.Currency).HasMaxLength(3).IsFixedLength().IsUnicode(false).IsRequired();
+            e.Property(r => r.Date).HasColumnType("date");
+            e.Property(r => r.Rate).HasPrecision(20, ExchangeRate.RateDecimals);
+            e.HasOne<Company>().WithMany().HasForeignKey(r => r.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
         });
          // SR-13: items and warehouses of a company. CompanyId on both (SR-33); decimals are DECIMAL(18,2) by convention (SR-39).
         b.Entity<Item>(e =>

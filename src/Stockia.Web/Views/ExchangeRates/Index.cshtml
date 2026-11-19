@@ -1,0 +1,58 @@
+@model Stockia.Web.Controllers.ExchangeRatesViewModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Exchange rates";
+    string RateText(decimal r) => r.ToString("0.##########", CultureInfo.InvariantCulture);
+}
+<main class="page">
+  <p><a asp-controller="Home" asp-action="Index">Home</a> | <a asp-controller="Journal" asp-action="New">New journal entry</a></p>
+  <h1 class="brand">Exchange rates</h1>
+  <p>Base currency: <strong id="base-currency">@Model.BaseCurrency</strong>. A rate is the value of 1 unit of the currency in @Model.BaseCurrency,
+     and applies from its date until the next rate of that currency.</p>
+
+  @if (Model.Errors.Count > 0)
+  {
+    <div class="error" role="alert">
+      <ul>
+        @foreach (var message in Model.Errors) { <li>@message</li> }
+      </ul>
+    </div>
+  }
+
+  <form method="post" asp-action="Set">
+    <label for="Currency">Currency</label>
+    <input id="Currency" name="Currency" value="@Model.Form.Currency" maxlength="3" placeholder="LBP" required />
+
+    <label for="Date">From date</label>
+    <input id="Date" name="Date" type="date" value="@Model.Form.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" required />
+
+    <label for="Rate">1 unit = how many @Model.BaseCurrency</label>
+    <input id="Rate" name="Rate" type="number" step="any" min="0" value="@(Model.Form.Rate is decimal r ? RateText(r) : "")" required />
+
+    <button type="submit">Save rate</button>
+  </form>
+
+  <h2>Rates</h2>
+  @if (Model.Rates.Count == 0)
+  {
+    <p class="empty-text">No rates yet. Every amount is in @Model.BaseCurrency until a rate is added.</p>
+  }
+  else
+  {
+    <div class="grid-wrap">
+      <table class="grid" id="rates">
+        <thead><tr><th>Currency</th><th>From date</th><th class="num">1 unit in @Model.BaseCurrency</th></tr></thead>
+        <tbody>
+          @foreach (var rate in Model.Rates)
+          {
+            <tr>
+              <td>@rate.Currency</td>
+              <td>@rate.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)</td>
+              <td class="num">@RateText(rate.Rate)</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</main>

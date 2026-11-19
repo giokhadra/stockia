@@ -37,10 +37,13 @@
     <label for="Description">Description</label>
     <input id="Description" name="Description" value="@Model.Form.Description" maxlength="500" />
 
+    <p class="empty-text">Amounts are in the currency of their line. A line in another currency is converted to
+      @Model.BaseCurrency at the rate of the entry date (<a asp-controller="ExchangeRates" asp-action="Index">exchange rates</a>).</p>
+
     <div class="grid-wrap">
       <table class="grid">
         <thead>
-          <tr><th>Account</th><th class="num">Debit</th><th class="num">Credit</th></tr>
+          <tr><th>Account</th><th>Currency</th><th class="num">Debit</th><th class="num">Credit</th></tr>
         </thead>
         <tbody id="lines">
           @for (var i = 0; i < Model.Form.Lines.Count; i++)
@@ -53,6 +56,15 @@
                   @foreach (var a in Model.Accounts)
                   {
                     <option value="@a.Id" selected="@(a.Id == line.AccountId)">@a.Code - @a.Name</option>
+                  }
+                </select>
+              </td>
+              <td>
+                <select name="Lines[@i].Currency" aria-label="Currency, line @(i + 1)">
+                  <option value="">@Model.BaseCurrency</option>
+                  @foreach (var c in Model.Currencies)
+                  {
+                    <option value="@c" selected="@(string.Equals(c, line.Currency, StringComparison.OrdinalIgnoreCase))">@c</option>
                   }
                 </select>
               </td>
@@ -72,6 +84,15 @@
             @foreach (var a in Model.Accounts)
             {
               <option value="@a.Id">@a.Code - @a.Name</option>
+            }
+          </select>
+        </td>
+        <td>
+          <select name="Lines[__i__].Currency" aria-label="Currency, new line">
+            <option value="">@Model.BaseCurrency</option>
+            @foreach (var c in Model.Currencies)
+            {
+              <option value="@c">@c</option>
             }
           </select>
         </td>

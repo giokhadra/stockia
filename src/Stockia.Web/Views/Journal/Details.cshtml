@@ -6,6 +6,9 @@
     var history = ViewData["History"] as List<AuditLog> ?? new List<AuditLog>();
     var reversedById = ViewData["ReversedById"] as int?;
     var reverseError = ViewData["ReverseError"] as string;
+    var baseCurrency = ViewData["BaseCurrency"] as string ?? "";
+    var hasForeign = Model.Lines.Any(l => l.Currency is not null);   // SR-19
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
 }
 <main class="page">
   <p>
@@ -37,20 +40,30 @@
   <div class="grid-wrap">
     <table class="grid">
       <thead>
-        <tr><th>Account (open its ledger)</th><th class="num">Debit</th><th class="num">Credit</th></tr>
+        <tr>
+          <th>Account (open its ledger)</th>
+          @if (hasForeign) { <th>Currency</th><th class="num">Amount in currency</th><th class="num">Rate</th> }
+          <th class="num">Debit @baseCurrency</th><th class="num">Credit @baseCurrency</th>
+        </tr>
       </thead>
       <tbody>
         @foreach (var line in Model.Lines.OrderBy(l => l.Id))
         {
           <tr>
             <td><a asp-controller="Ledger" asp-action="Account" asp-route-id="@line.AccountId">@line.Account?.Code - @line.Account?.Name</a></td>
+            @if (hasForeign)
+            {
+              <td>@(line.Currency ?? baseCurrency)</td>
+              <td class="num">@(line.ForeignAmount?.ToString("N2", inv))</td>
+              <td class="num">@(line.Rate?.ToString("0.##########", inv))</td>
+            }
             <td class="num">@Amt(line.Debit)</td>
             <td class="num">@Amt(line.Credit)</td>
           </tr>
         }
       </tbody>
       <tfoot>
-        <tr><td>Total</td><td class="num">@Model.TotalDebit.ToString("N2")</td><td class="num">@Model.TotalCredit.ToString("N2")</td></tr>
+        <tr><td colspan="@(hasForeign ? 4 : 1)">Total</td><td class="num">@Model.TotalDebit.ToString("N2")</td><td class="num">@Model.TotalCredit.ToString("N2")</td></tr>
       </tfoot>
     </table>
   </div>
