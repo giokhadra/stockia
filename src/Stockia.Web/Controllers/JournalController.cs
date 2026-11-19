@@ -14,12 +14,15 @@ public class JournalController : Controller
     private readonly JournalService _journal;
     private readonly AuditService _audit;
     private readonly JournalReversalService _reversals;
+    private readonly ExchangeRateService _rates;
 
-    public JournalController(JournalService journal, AuditService audit, JournalReversalService reversals)
+    public JournalController(JournalService journal, AuditService audit, JournalReversalService reversals,
+        ExchangeRateService rates)
     {
         _journal = journal;
         _audit = audit;
         _reversals = reversals;
+        _rates = rates;
     }
 
     [HttpGet]
@@ -42,7 +45,7 @@ public class JournalController : Controller
         // Rows left completely blank on the page are ignored.
         var lines = form.Lines
             .Where(l => !(l.AccountId == 0 && (l.Debit ?? 0m) == 0m && (l.Credit ?? 0m) == 0m))
-            .Select(l => new NewJournalLine(l.AccountId, l.Debit ?? 0m, l.Credit ?? 0m))
+            .Select(l => new NewJournalLine(l.AccountId, l.Debit ?? 0m, l.Credit ?? 0m, l.Currency))
             .ToList();
 
         var result = await _journal.PostAsync(companyId,
@@ -88,6 +91,7 @@ public class JournalController : Controller
         ViewData["History"] = await _audit.ForEntryAsync(companyId, id);
         ViewData["ReversedById"] = await _reversals.FindReversalIdAsync(companyId, id);
         ViewData["ReverseError"] = reverseError;
+        ViewData["BaseCurrency"] = await _rates.BaseCurrencyAsync(companyId);
         return View("Details", entry);
     }
 
@@ -98,6 +102,8 @@ public class JournalController : Controller
         {
             Form = form,
             Accounts = await _journal.ListPostableAccountsAsync(companyId),
+            BaseCurrency = await _rates.BaseCurrencyAsync(companyId),
+            Currencies = await _rates.CurrenciesAsync(companyId),
             Errors = errors?.ToList() ?? new List<string>()
         };
     }

@@ -36,6 +36,7 @@ public class RoleAccessTests : IClassFixture<StockiaFactory>
             ("/", AllRoles),
             ("/Accounts", AllRoles),
             ("/Ledger", AllRoles),
+            ("/ExchangeRates", AllRoles),
             ("/Journal/New", new[] { "admin", "chief", "accountant" }),
             ("/Account/ChooseCompany", AllRoles),
             ("/Company", new[] { "admin" }),

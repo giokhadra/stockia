@@ -37,6 +37,22 @@ public class JournalEntry
         return line;
     }
 
+    /// <summary>SR-19: adds a line entered in a foreign currency. The debit or credit is converted at the rate and
+    /// the line keeps the currency, the foreign amount and the rate as well.</summary>
+    public JournalLine AddForeignLine(int accountId, string currency, decimal foreignDebit, decimal foreignCredit, decimal rate)
+    {
+        if (!ExchangeRate.IsCurrencyCode(currency))
+            throw new ArgumentException("A currency is a three-letter code.");
+        if (rate <= 0)
+            throw new ArgumentException("A rate must be above zero.");
+        var foreign = Money.Round(foreignDebit > 0 ? foreignDebit : foreignCredit);
+        var line = AddLine(accountId, ExchangeRate.Convert(foreignDebit, rate), ExchangeRate.Convert(foreignCredit, rate));
+        line.Currency = currency;
+        line.ForeignAmount = foreign;
+        line.Rate = rate;
+        return line;
+    }
+
     public decimal TotalDebit => Money.Total(_lines.Select(l => l.Debit));
     public decimal TotalCredit => Money.Total(_lines.Select(l => l.Credit));
 
