@@ -1,0 +1,35 @@
+@model Stockia.Web.Controllers.SuppliersPageViewModel
+@{ ViewData["Title"] = "Suppliers"; }
+<div class="page">
+    <h1>Suppliers</h1>
+
+    <form class="card-form" asp-action="Create" method="post">
+        @if (Model.Error is not null) { <p class="error-text">@Model.Error</p> }
+        <label>Name <input asp-for="Name" /></label>
+        <label>Tax number (optional) <input asp-for="TaxNumber" /></label>
+        <label>Phone (optional) <input asp-for="Phone" /></label>
+        <div class="form-actions"><button type="submit">Add supplier</button></div>
+    </form>
+
+    @if (Model.Suppliers.Count == 0)
+    {
+        <p class="empty-text">No suppliers yet.</p>
+    }
+    else
+    {
+        <table class="data-table">
+            <thead><tr><th>Name</th><th>Tax number</th><th>Phone</th><th>Balance (we owe)</th></tr></thead>
+            <tbody>
+            @foreach (var s in Model.Suppliers)
+            {
+                <tr>
+                    <td>@s.Name</td>
+                    <td>@s.TaxNumber</td>
+                    <td>@s.Phone</td>
+                    <td>@s.Balance.ToString("N2")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
