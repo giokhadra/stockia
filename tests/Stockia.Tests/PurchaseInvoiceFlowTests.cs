@@ -31,6 +31,8 @@ public class PurchaseInvoiceFlowTests : IClassFixture<StockiaFactory>
         }
         EnsureItem(db, "PF", "Flour", 11m, true);
         EnsureItem(db, "PT", "Transport", 0m, false);
+         if (!db.Warehouses.Any(w => w.CompanyId == _data.CompanyAId))   // SR-14: stock lines need one
+        db.Warehouses.Add(new Warehouse { CompanyId = _data.CompanyAId, Name = "Purch warehouse" });
         db.SaveChanges();
         _flourId = db.Items.Single(i => i.CompanyId == _data.CompanyAId && i.Code == "PF").Id;
         _transportId = db.Items.Single(i => i.CompanyId == _data.CompanyAId && i.Code == "PT").Id;

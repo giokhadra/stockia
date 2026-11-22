@@ -23,11 +23,15 @@ public class PurchaseInvoiceViewModel
     public DateTime? DueDate { get; set; }
     public string? Currency { get; set; }
     public string? Description { get; set; }
+    public int? WarehouseId { get; set; }
     public List<PurchaseLineInput> Lines { get; set; } = new();
     public List<string> Errors { get; set; } = new();
     public List<Supplier> Suppliers { get; set; } = new();
     public List<Item> Items { get; set; } = new();
+     public List<Warehouse> Warehouses { get; set; } = new();
 
+     public IEnumerable<SelectListItem> WarehouseChoices =>
+     Warehouses.Select(w => new SelectListItem(w.Name, w.Id.ToString(), w.Id == WarehouseId));
     public IEnumerable<SelectListItem> SupplierChoices =>
         Suppliers.Select(s => new SelectListItem(s.Name, s.Id.ToString(), s.Id == SupplierId));
     public IEnumerable<SelectListItem> ItemChoices(int? selected) =>
@@ -40,12 +44,15 @@ public class PurchaseInvoicesController : Controller
 {
     private readonly PurchaseInvoiceService _purchases;
     private readonly ItemService _items;
+    private readonly WarehouseService _warehouses;
     private readonly TimeProvider _clock;
 
-    public PurchaseInvoicesController(PurchaseInvoiceService purchases, ItemService items, TimeProvider clock)
+    public PurchaseInvoicesController(PurchaseInvoiceService purchases, ItemService items, WarehouseService warehouses,
+        TimeProvider clock)
     {
         _purchases = purchases;
         _items = items;
+        _warehouses = warehouses;
         _clock = clock;
     }
 
@@ -80,7 +87,8 @@ public class PurchaseInvoicesController : Controller
         if (User.GetCompanyId() is not int companyId || User.GetUserId() is not int userId) return Forbid();
         var lines = (form.Lines ?? new()).Select(l => new PurchaseLineForm(l.ItemId, l.Quantity, l.UnitPrice)).ToList();
         var (invoice, errors) = await _purchases.CreateAsync(companyId, userId,
-            new PurchaseInvoiceForm(form.SupplierId, form.Number, form.Date, form.DueDate, form.Currency, form.Description, lines));
+            new PurchaseInvoiceForm(form.SupplierId, form.Number, form.Date, form.DueDate, form.Currency, form.Description, lines,
+                form.WarehouseId));
         if (invoice is null)
         {
             ModelState.Clear();
@@ -94,6 +102,8 @@ public class PurchaseInvoicesController : Controller
     {
         m.Suppliers = await _purchases.ListSuppliersAsync(companyId);
         m.Items = await _items.ListAsync(companyId);
+                m.Warehouses = await _warehouses.ListAsync(companyId);
+        if (m.WarehouseId is null && m.Warehouses.Count == 1) m.WarehouseId = m.Warehouses[0].Id;   // SR-14: the only one
         while (m.Lines.Count < PurchaseInvoiceViewModel.LineRows) m.Lines.Add(new PurchaseLineInput());
         return m;
     }

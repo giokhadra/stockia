@@ -23,6 +23,7 @@ public class StockiaDbContext : DbContext
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<PurchaseInvoice> PurchaseInvoices => Set<PurchaseInvoice>();
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
+        public DbSet<StockMovement> StockMovements => Set<StockMovement>();
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     // SR-39: every decimal in the model is DECIMAL(18,2) unless a property says otherwise (only exchange rates: DECIMAL(20,10)).
@@ -166,6 +167,7 @@ public class StockiaDbContext : DbContext
             e.HasOne<Company>().WithMany().HasForeignKey(i => i.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
             e.HasOne(i => i.Partner).WithMany().HasForeignKey(i => i.PartnerId).IsRequired().OnDelete(DeleteBehavior.Restrict);
             e.HasMany(i => i.Lines).WithOne().HasForeignKey(l => l.InvoiceId).IsRequired().OnDelete(DeleteBehavior.Cascade);
+                        e.HasOne(i => i.Warehouse).WithMany().HasForeignKey(i => i.WarehouseId).OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<InvoiceLine>(e =>
@@ -174,6 +176,20 @@ public class StockiaDbContext : DbContext
             e.Property(l => l.Description).HasMaxLength(100).IsRequired();
             e.HasOne<Company>().WithMany().HasForeignKey(l => l.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Item>().WithMany().HasForeignKey(l => l.ItemId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+        });
+        
+        // SR-14: stock movements. CompanyId on the table (SR-33); Quantity and Value are DECIMAL(18,2) by convention (SR-39).
+        b.Entity<StockMovement>(e =>
+        {
+            e.ToTable("StockMovement");
+            e.HasIndex(m => new { m.CompanyId, m.ItemId, m.WarehouseId });
+            e.HasIndex(m => m.InvoiceLineId).IsUnique().HasFilter("[InvoiceLineId] IS NOT NULL");
+            e.Property(m => m.Type).HasMaxLength(10).IsRequired();
+            e.Property(m => m.Date).HasColumnType("date");
+            e.HasOne<Company>().WithMany().HasForeignKey(m => m.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Item>().WithMany().HasForeignKey(m => m.ItemId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Warehouse>().WithMany().HasForeignKey(m => m.WarehouseId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<InvoiceLine>().WithMany().HasForeignKey(m => m.InvoiceLineId).OnDelete(DeleteBehavior.Restrict);
         });
         
         // SR-6: the audit trail (CompanyId on it, SR-33) and the link from a reversal to the entry it reverses.

@@ -13,6 +13,9 @@
         <label>Due date <input asp-for="DueDate" type="date" /></label>
         <label>Currency (blank = company currency) <input asp-for="Currency" maxlength="3" /></label>
         <label>Description (optional) <input asp-for="Description" /></label>
+        <label>Warehouse that receives the stock items
+        <select asp-for="WarehouseId" asp-items="Model.WarehouseChoices"><option value="">Choose...</option></select>
+        </label>
 
         <table class="data-table">
             <thead><tr><th>Item</th><th>Quantity</th><th>Unit price (blank = item cost)</th></tr></thead>

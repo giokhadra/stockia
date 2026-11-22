@@ -4,6 +4,7 @@
     <h1>Purchase invoice @Model.Number</h1>
     <p>Supplier: @Model.Partner?.Name &middot; Date: @Model.Date.ToString("yyyy-MM-dd") &middot; Due: @Model.DueDate.ToString("yyyy-MM-dd") &middot; Currency: @Model.Currency</p>
     @if (!string.IsNullOrEmpty(Model.Description)) { <p>@Model.Description</p> }
+        @if (Model.Warehouse is not null) { <p id="received-into">Stock items received into: @Model.Warehouse.Name</p> }
 
     <table class="data-table">
         <thead><tr><th>Item</th><th>Qty</th><th>Unit price</th><th>Net</th><th>VAT %</th><th>VAT</th><th>Line total</th></tr></thead>
