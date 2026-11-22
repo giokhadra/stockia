@@ -14,6 +14,8 @@ public abstract class Invoice
     public DateTime DueDate { get; set; }
     public string Currency { get; set; } = "USD";
     public string? Description { get; set; }
+    public int? WarehouseId { get; set; }
+    public Warehouse? Warehouse { get; set; }
     public List<InvoiceLine> Lines { get; } = new();
 
     public decimal Subtotal { get; set; }

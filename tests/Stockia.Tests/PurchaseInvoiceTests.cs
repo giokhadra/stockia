@@ -36,6 +36,7 @@ public class PurchaseInvoiceTests
         var flour = new Item { CompanyId = a.Id, Code = "FL", Name = "Flour", Unit = "bag", Cost = 10m, SalePrice = 15m, VatRate = 11m, IsStock = true };
         var transport = new Item { CompanyId = a.Id, Code = "TR", Name = "Transport", Unit = "trip", Cost = 0m, SalePrice = 0m, VatRate = 0m, IsStock = false };
         db.Items.AddRange(flour, transport);
+        db.Warehouses.Add(new Warehouse { CompanyId = a.Id, Name = "Main warehouse" });   // SR-14: stock lines need one
         await db.SaveChangesAsync();
 
         var rates = new ExchangeRateService(db);

@@ -19,6 +19,7 @@ public class ItemsPageViewModel
     public bool IsStock { get; set; } = true;
     public string? Error { get; set; }
     public List<Item> Items { get; set; } = new();
+    public Dictionary<int, decimal> InStock { get; set; } = new();
 }
 
 /// <summary>SR-13 / UC-10: items. Anyone assigned to the company may look; only the accounting roles write (SR-33).</summary>
@@ -26,13 +27,23 @@ public class ItemsPageViewModel
 public class ItemsController : Controller
 {
     private readonly ItemService _items;
-    public ItemsController(ItemService items) => _items = items;
+    private readonly StockService _stock;
+
+    public ItemsController(ItemService items, StockService stock)
+    {
+        _items = items;
+        _stock = stock;
+    }
 
     [HttpGet]
     public async Task<IActionResult> Index()
     {
         if (User.GetCompanyId() is not int companyId) return Forbid();
-        return View(new ItemsPageViewModel { Items = await _items.ListAsync(companyId) });
+         return View(new ItemsPageViewModel
+        {
+            Items = await _items.ListAsync(companyId),
+            InStock = await _stock.QuantitiesAsync(companyId)
+        });
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -46,6 +57,7 @@ public class ItemsController : Controller
             ModelState.Clear();
             form.Error = error;
             form.Items = await _items.ListAsync(companyId);
+            form.InStock = await _stock.QuantitiesAsync(companyId);
             return View("Index", form);
         }
         return RedirectToAction(nameof(Index));

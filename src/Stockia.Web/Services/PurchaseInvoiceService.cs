@@ -11,8 +11,10 @@ public record SupplierForm(string? Name, string? TaxNumber, string? Phone);
 public record PurchaseLineForm(int? ItemId, decimal? Quantity, decimal? UnitPrice);
 
 /// <summary>What the user types for a purchase invoice. A blank currency means the company's base currency.</summary>
+/// <summary>What the user types for a purchase invoice. A blank currency means the company's base currency.
+/// WarehouseId (SR-14) receives the stock lines; left blank, the company's only warehouse is used.</summary>
 public record PurchaseInvoiceForm(int? SupplierId, string? Number, DateTime? Date, DateTime? DueDate,
-    string? Currency, string? Description, IReadOnlyList<PurchaseLineForm> Lines);
+string? Currency, string? Description, IReadOnlyList<PurchaseLineForm> Lines, int? WarehouseId = null);
 
 /// <summary>SR-7 / UC-3: suppliers and purchase invoices of one company. Every method takes the companyId of the
 /// signed-in user (SR-33). Saving an invoice posts its journal entry (SR-4) and raises the supplier's balance.</summary>
@@ -65,7 +67,7 @@ public class PurchaseInvoiceService
             .OrderByDescending(i => i.Date).ThenByDescending(i => i.Id).ToListAsync();
 
     public Task<PurchaseInvoice?> FindAsync(int companyId, int id) =>
-        _db.PurchaseInvoices.Include(i => i.Partner).Include(i => i.Lines)
+            _db.PurchaseInvoices.Include(i => i.Partner).Include(i => i.Lines).Include(i => i.Warehouse)
             .FirstOrDefaultAsync(i => i.CompanyId == companyId && i.Id == id);
 
     public Task<List<PurchaseInvoice>> ListOfSupplierAsync(int companyId, int supplierId) =>
@@ -138,10 +140,23 @@ public class PurchaseInvoiceService
                 IsStock = item.IsStock
             });
         }
+              
+        if (invoice.Lines.Any(l => l.IsStock))
+        {
+            var warehouseIds = await _db.Warehouses.Where(w => w.CompanyId == companyId).Select(w => w.Id).ToListAsync();
+            if (form.WarehouseId is int chosen)
+            {
+                if (warehouseIds.Contains(chosen)) invoice.WarehouseId = chosen;
+                else errors.Add("Choose a warehouse of this company.");
+            }
+            else if (warehouseIds.Count == 1) invoice.WarehouseId = warehouseIds[0];
+            else errors.Add(warehouseIds.Count == 0
+                ? "Add a warehouse first: stock items are received into a warehouse."
+                : "Choose the warehouse that receives the stock items.");
+        }
         if (errors.Count > 0) return (null, errors);
 
         invoice.Recalculate();
-
         // the balance of the supplier is kept in the base currency (SR-19)
         decimal rate = 1m;
         if (currency != baseCurrency)
@@ -168,7 +183,9 @@ public class PurchaseInvoiceService
             return (null, posted.Errors);
         }
 
-        supplier!.Balance += invoice.BaseTotal;     // SR-7: saving the invoice raises what we owe the supplier
+               supplier!.Balance += invoice.BaseTotal;     // SR-7: saving the invoice raises what we owe the supplier
+        if (invoice.WarehouseId is int warehouseId)  // SR-14: the stock rises in the same save
+            new StockService(_db).ReceivePurchase(invoice, warehouseId, rate);
         await _db.SaveChangesAsync();
         return (invoice, Array.Empty<string>());
     }
