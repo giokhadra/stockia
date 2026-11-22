@@ -1,0 +1,29 @@
+@model Stockia.Web.Domain.PurchaseInvoice
+@{ ViewData["Title"] = "Purchase invoice " + Model.Number; }
+<div class="page">
+    <h1>Purchase invoice @Model.Number</h1>
+    <p>Supplier: @Model.Partner?.Name &middot; Date: @Model.Date.ToString("yyyy-MM-dd") &middot; Due: @Model.DueDate.ToString("yyyy-MM-dd") &middot; Currency: @Model.Currency</p>
+    @if (!string.IsNullOrEmpty(Model.Description)) { <p>@Model.Description</p> }
+
+    <table class="data-table">
+        <thead><tr><th>Item</th><th>Qty</th><th>Unit price</th><th>Net</th><th>VAT %</th><th>VAT</th><th>Line total</th></tr></thead>
+        <tbody>
+        @foreach (var l in Model.Lines)
+        {
+            <tr>
+                <td>@l.Description</td>
+                <td>@l.Quantity.ToString("N2")</td>
+                <td>@l.UnitPrice.ToString("N2")</td>
+                <td>@l.Net.ToString("N2")</td>
+                <td>@l.VatRate.ToString("0.##")</td>
+                <td>@l.Vat.ToString("N2")</td>
+                <td>@l.Total.ToString("N2")</td>
+            </tr>
+        }
+        </tbody>
+        <tfoot>
+            <tr><td colspan="3"></td><td>@Model.Subtotal.ToString("N2")</td><td></td><td>@Model.VatTotal.ToString("N2")</td><td><strong>@Model.Total.ToString("N2")</strong></td></tr>
+        </tfoot>
+    </table>
+    <p><a asp-action="Index">Back to purchase invoices</a></p>
+</div>

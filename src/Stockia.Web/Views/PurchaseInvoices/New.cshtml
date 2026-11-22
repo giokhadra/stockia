@@ -1,0 +1,33 @@
+@model Stockia.Web.Controllers.PurchaseInvoiceViewModel
+@{ ViewData["Title"] = "New purchase invoice"; }
+<div class="page">
+    <h1>New purchase invoice</h1>
+
+    <form class="card-form" asp-action="New" method="post" style="max-width:none">
+        @foreach (var e in Model.Errors) { <p class="error-text">@e</p> }
+        <label>Supplier
+            <select asp-for="SupplierId" asp-items="Model.SupplierChoices"><option value="">Choose...</option></select>
+        </label>
+        <label>Supplier's invoice number <input asp-for="Number" /></label>
+        <label>Date <input asp-for="Date" type="date" /></label>
+        <label>Due date <input asp-for="DueDate" type="date" /></label>
+        <label>Currency (blank = company currency) <input asp-for="Currency" maxlength="3" /></label>
+        <label>Description (optional) <input asp-for="Description" /></label>
+
+        <table class="data-table">
+            <thead><tr><th>Item</th><th>Quantity</th><th>Unit price (blank = item cost)</th></tr></thead>
+            <tbody>
+            @for (var n = 0; n < Model.Lines.Count; n++)
+            {
+                <tr>
+                    <td><select asp-for="Lines[n].ItemId" asp-items="Model.ItemChoices(Model.Lines[n].ItemId)"><option value="">-</option></select></td>
+                    <td><input asp-for="Lines[n].Quantity" type="number" step="0.01" min="0" /></td>
+                    <td><input asp-for="Lines[n].UnitPrice" type="number" step="0.01" min="0" /></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p>VAT is taken from each item and added line by line.</p>
+        <div class="form-actions"><button type="submit">Save purchase invoice</button></div>
+    </form>
+</div>
