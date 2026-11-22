@@ -18,6 +18,11 @@ public class StockiaDbContext : DbContext
     public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
      public DbSet<Item> Items => Set<Item>();
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
+    public DbSet<Partner> Partners => Set<Partner>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<PurchaseInvoice> PurchaseInvoices => Set<PurchaseInvoice>();
+    public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     // SR-39: every decimal in the model is DECIMAL(18,2) unless a property says otherwise (only exchange rates: DECIMAL(20,10)).
@@ -131,6 +136,44 @@ public class StockiaDbContext : DbContext
             e.HasIndex(w => new { w.CompanyId, w.Name }).IsUnique();
             e.Property(w => w.Name).HasMaxLength(100).IsRequired();
             e.HasOne<Company>().WithMany().HasForeignKey(w => w.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // SR-7: partners (one table, Kind tells a supplier from a future customer) and invoices (same idea).
+        // CompanyId on every table (SR-33); amounts DECIMAL(18,2) by convention (SR-39).
+        b.Entity<Partner>(e =>
+        {
+            e.ToTable("Partner");
+            e.HasDiscriminator<string>("Kind").HasValue<Supplier>("Supplier");
+            e.Property("Kind").HasMaxLength(20);
+            e.HasIndex(p => new { p.CompanyId, p.Name }).IsUnique();
+            e.Property(p => p.Name).HasMaxLength(150).IsRequired();
+            e.Property(p => p.TaxNumber).HasMaxLength(30);
+            e.Property(p => p.Phone).HasMaxLength(30);
+            e.HasOne<Company>().WithMany().HasForeignKey(p => p.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Invoice>(e =>
+        {
+            e.ToTable("Invoice");
+            e.HasDiscriminator<string>("Kind").HasValue<PurchaseInvoice>("Purchase");
+            e.Property("Kind").HasMaxLength(20);
+            e.HasIndex("CompanyId", "Kind", nameof(Invoice.PartnerId), nameof(Invoice.Number)).IsUnique();
+            e.Property(i => i.Number).HasMaxLength(50).IsRequired();
+            e.Property(i => i.Date).HasColumnType("date");
+            e.Property(i => i.DueDate).HasColumnType("date");
+            e.Property(i => i.Currency).HasMaxLength(3).IsFixedLength().IsUnicode(false).IsRequired();
+            e.Property(i => i.Description).HasMaxLength(500);
+            e.HasOne<Company>().WithMany().HasForeignKey(i => i.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(i => i.Partner).WithMany().HasForeignKey(i => i.PartnerId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(i => i.Lines).WithOne().HasForeignKey(l => l.InvoiceId).IsRequired().OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<InvoiceLine>(e =>
+        {
+            e.ToTable("InvoiceLine");
+            e.Property(l => l.Description).HasMaxLength(100).IsRequired();
+            e.HasOne<Company>().WithMany().HasForeignKey(l => l.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Item>().WithMany().HasForeignKey(l => l.ItemId).IsRequired().OnDelete(DeleteBehavior.Restrict);
         });
         
         // SR-6: the audit trail (CompanyId on it, SR-33) and the link from a reversal to the entry it reverses.
