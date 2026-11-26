@@ -31,6 +31,7 @@ builder.Services.AddScoped<WarehouseService>();
 builder.Services.AddScoped<PurchaseInvoiceService>();
 builder.Services.AddScoped<SalesInvoiceService>();
 builder.Services.AddScoped<StockService>();
+builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<JournalReversalService>();
 // SR-4: automatic posting of documents. Invoice pages call PostingService.PostAsync when a document is saved;
