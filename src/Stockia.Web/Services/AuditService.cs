@@ -11,6 +11,9 @@ public static class AuditActions
     public const string EntryReversed = "entry reversed";
     public const string ReversalPosted = "reversal posted";
     public const string EntryPostedAutomatically = "entry posted automatically";   // SR-4
+        public const string SaleAwaitingApproval = "sale beyond stock awaiting approval";   // SR-15, UC-9
+    public const string SaleApproved = "sale beyond stock approved";
+    public const string SaleRejected = "sale beyond stock rejected";
 }
 
 /// <summary>SR-6: records and reads the audit trail of one company. Every method takes the companyId

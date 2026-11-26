@@ -1,5 +1,11 @@
 namespace Stockia.Web.Domain;
 
+public static class InvoiceStatuses
+{
+    public const string Posted = "Posted";
+    public const string PendingApproval = "PendingApproval";
+    public const string Rejected = "Rejected";
+}
 /// <summary>SR-7: a commercial invoice. Amounts are in the invoice currency; BaseTotal is the total in the company's
 /// base currency (the same as Total when the currency is the base currency). Totals are always the sum of the
 /// rounded lines (SR-39), so they match what the user sees line by line to 0.01.</summary>
@@ -17,6 +23,9 @@ public abstract class Invoice
     public int? WarehouseId { get; set; }
     public Warehouse? Warehouse { get; set; }
     public List<InvoiceLine> Lines { get; } = new();
+    public string Status { get; set; } = InvoiceStatuses.Posted;
+    public int? DecidedByUserId { get; set; }
+    public DateTime? DecidedAt { get; set; }
 
     public decimal Subtotal { get; set; }
     public decimal VatTotal { get; set; }

@@ -169,7 +169,9 @@ public class StockiaDbContext : DbContext
             e.HasOne<Company>().WithMany().HasForeignKey(i => i.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
             e.HasOne(i => i.Partner).WithMany().HasForeignKey(i => i.PartnerId).IsRequired().OnDelete(DeleteBehavior.Restrict);
             e.HasMany(i => i.Lines).WithOne().HasForeignKey(l => l.InvoiceId).IsRequired().OnDelete(DeleteBehavior.Cascade);
-                        e.HasOne(i => i.Warehouse).WithMany().HasForeignKey(i => i.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(i => i.Warehouse).WithMany().HasForeignKey(i => i.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(i => i.Status).HasMaxLength(20).IsRequired();
+            e.HasOne<AppUser>().WithMany().HasForeignKey(i => i.DecidedByUserId).OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<InvoiceLine>(e =>
@@ -192,7 +194,8 @@ public class StockiaDbContext : DbContext
             e.HasOne<Item>().WithMany().HasForeignKey(m => m.ItemId).IsRequired().OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Warehouse>().WithMany().HasForeignKey(m => m.WarehouseId).IsRequired().OnDelete(DeleteBehavior.Restrict);
             e.HasOne<InvoiceLine>().WithMany().HasForeignKey(m => m.InvoiceLineId).OnDelete(DeleteBehavior.Restrict);
-        });
+    
+            });
         
         // SR-6: the audit trail (CompanyId on it, SR-33) and the link from a reversal to the entry it reverses.
         b.Entity<AuditLog>(e =>
