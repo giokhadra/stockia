@@ -20,8 +20,10 @@ public class StockiaDbContext : DbContext
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
     public DbSet<Partner> Partners => Set<Partner>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<PurchaseInvoice> PurchaseInvoices => Set<PurchaseInvoice>();
+    public DbSet<SalesInvoice> SalesInvoices => Set<SalesInvoice>();
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
         public DbSet<StockMovement> StockMovements => Set<StockMovement>();
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
@@ -144,7 +146,7 @@ public class StockiaDbContext : DbContext
         b.Entity<Partner>(e =>
         {
             e.ToTable("Partner");
-            e.HasDiscriminator<string>("Kind").HasValue<Supplier>("Supplier");
+            e.HasDiscriminator<string>("Kind").HasValue<Supplier>("Supplier").HasValue<Customer>("Customer");
             e.Property("Kind").HasMaxLength(20);
             e.HasIndex(p => new { p.CompanyId, p.Name }).IsUnique();
             e.Property(p => p.Name).HasMaxLength(150).IsRequired();
@@ -156,7 +158,7 @@ public class StockiaDbContext : DbContext
         b.Entity<Invoice>(e =>
         {
             e.ToTable("Invoice");
-            e.HasDiscriminator<string>("Kind").HasValue<PurchaseInvoice>("Purchase");
+            e.HasDiscriminator<string>("Kind").HasValue<PurchaseInvoice>("Purchase").HasValue<SalesInvoice>("Sales");
             e.Property("Kind").HasMaxLength(20);
             e.HasIndex("CompanyId", "Kind", nameof(Invoice.PartnerId), nameof(Invoice.Number)).IsUnique();
             e.Property(i => i.Number).HasMaxLength(50).IsRequired();

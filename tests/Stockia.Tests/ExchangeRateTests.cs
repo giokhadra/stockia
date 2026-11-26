@@ -49,6 +49,12 @@ public class ExchangeRateTests
         public Task<string> BaseCurrencyAsync(int companyId) => Task.FromResult(Base);
         public Task<ExchangeRate?> RateOnAsync(int companyId, string currency, DateTime date) =>
             Task.FromResult(ExchangeRate.On(Rates.Where(r => r.CompanyId == companyId), currency, date));
+        public Task RememberAsync(int companyId, string currency, DateTime date, decimal rate)
+        {
+            Rates.RemoveAll(r => r.CompanyId == companyId && r.Currency == currency && r.Date == date.Date);
+            Rates.Add(new ExchangeRate { CompanyId = companyId, Currency = currency, Date = date.Date, Rate = rate });
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeRepo : IJournalRepository
@@ -143,6 +149,60 @@ public class ExchangeRateTests
 
         Assert.False(result.Succeeded);
         Assert.Equal(8.00m, result.Difference);
+    }
+
+    // ---- item 11b (#100), BRD OI-1: the rate is chosen per transaction; the last rate entered is proposed ----
+
+    [Fact]
+    public async Task A_rate_typed_on_a_foreign_line_is_used_and_kept_on_the_line()
+    {
+        var (journal, repo, _) = Build();
+        var result = await journal.PostAsync(1, new NewJournalEntry(Nov10, "FX-11b", null, new NewJournalLine[]
+        {
+            new(1, 100m, 0m, "EUR", 1.2m),     // typed: 1.2, not the stored 1.08
+            new(2, 0m, 120m),
+        }));
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        var line = repo.Entries.Single().Lines.Single(l => l.Currency == "EUR");
+        Assert.Equal((100m, 1.2m, 120.00m), (line.ForeignAmount!.Value, line.Rate!.Value, line.Debit));
+    }
+
+    [Fact]
+    public async Task A_typed_rate_becomes_the_rate_proposed_for_that_date()
+    {
+        var (journal, _, rates) = Build();
+        Assert.True((await journal.PostAsync(1, new NewJournalEntry(Nov10, "FX-11c", null,
+            new NewJournalLine[] { new(1, 100m, 0m, "EUR", 1.2m), new(2, 0m, 120m) }))).Succeeded);
+
+        Assert.Equal(1.2m, (await rates.RateOnAsync(1, "EUR", Nov10))!.Rate);     // proposed next time for Nov 10 on
+        Assert.Equal(1.08m, ExchangeRate.On(rates.Rates.Where(r => r.CompanyId == 1), "EUR", new DateTime(2026, 11, 9))!.Rate);
+    }
+
+    [Fact]
+    public async Task A_typed_rate_works_for_a_currency_with_no_stored_rate()
+    {
+        var (journal, repo, _) = Build();
+        var result = await journal.PostAsync(1, new NewJournalEntry(Nov10, "FX-11d", null,
+            new NewJournalLine[] { new(1, 100m, 0m, "GBP", 1.27m), new(2, 0m, 127m) }));   // company 1 has no GBP rate
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        Assert.Equal(127.00m, repo.Entries.Single().Lines.Single(l => l.Currency == "GBP").Debit);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1.08")]
+    public async Task A_typed_rate_of_zero_or_less_is_refused(string typed)
+    {
+        var (journal, repo, rates) = Build();
+        var result = await journal.PostAsync(1, new NewJournalEntry(Nov10, "FX-11e", null, new NewJournalLine[]
+            { new(1, 100m, 0m, "EUR", decimal.Parse(typed, CultureInfo.InvariantCulture)), new(2, 0m, 108m) }));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("rate must be above zero"));
+        Assert.Empty(repo.Entries);
+        Assert.Equal(1.08m, (await rates.RateOnAsync(1, "EUR", Nov10))!.Rate);    // a refused entry changes no rate
     }
 
     // ---- the rates of a company ----

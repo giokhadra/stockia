@@ -7,7 +7,9 @@ namespace Stockia.Web.Services;
 
 /// <summary>Debit and Credit are in <paramref name="Currency"/>; null, empty or the base currency means the
 /// base currency (SR-19).</summary>
-public record NewJournalLine(int AccountId, decimal Debit, decimal Credit, string? Currency = null);
+/// <summary><paramref name="Rate"/> (BRD OI-1): the rate the accountant chose for this line; left empty, the last
+/// rate on or before the entry date is used.</summary>
+public record NewJournalLine(int AccountId, decimal Debit, decimal Credit, string? Currency = null, decimal? Rate = null);
 
 /// <summary>SourceType and SourceId (SR-4) are set only by automatic posting: the document the entry comes from.</summary>
 public record NewJournalEntry(DateTime Date, string? Reference, string? Description, IReadOnlyList<NewJournalLine> Lines,
@@ -126,6 +128,7 @@ public class JournalService
         };
 
         string? baseCurrency = null;
+        var typedRates = new List<(string Currency, decimal Rate)>();
         for (var i = 0; i < input.Lines.Count; i++)
         {
             var line = input.Lines[i];
@@ -174,19 +177,35 @@ public class JournalService
                 entry.AddLine(line.AccountId, debit, credit);
                 continue;
             }
-            var rate = await _rates.RateOnAsync(companyId, currency, input.Date);
-            if (rate is null)
+            // BRD OI-1: the rate is chosen per transaction; with none typed, the last rate entered is used.
+            decimal rateValue;
+            if (line.Rate is decimal typed)
             {
-                errors.Add($"Line {n}: there is no {currency} rate on or before " +
-                           $"{input.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}. Add it on the Exchange rates page.");
-                continue;
+                rateValue = Math.Round(typed, ExchangeRate.RateDecimals, MidpointRounding.AwayFromZero);
+                if (rateValue <= 0m)
+                {
+                    errors.Add($"Line {n}: the rate must be above zero.");
+                    continue;
+                }
+                typedRates.Add((currency, rateValue));
             }
-            if (ExchangeRate.Convert(debit + credit, rate.Rate) == 0m)
+            else
+            {
+                var stored = await _rates.RateOnAsync(companyId, currency, input.Date);
+                if (stored is null)
+                {
+                    errors.Add($"Line {n}: there is no {currency} rate on or before " +
+                               $"{input.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}. Type the rate, or add it on the Exchange rates page.");
+                    continue;
+                }
+                rateValue = stored.Rate;
+            }
+            if (ExchangeRate.Convert(debit + credit, rateValue) == 0m)
             {
                 errors.Add($"Line {n}: the amount is less than 0.01 {baseCurrency} once converted.");
                 continue;
             }
-            entry.AddForeignLine(line.AccountId, currency, debit, credit, rate.Rate);
+            entry.AddForeignLine(line.AccountId, currency, debit, credit, rateValue);
         }
 
         // SR-3: refuse to post an entry whose total debits differ from its total credits, and say by how much.
@@ -202,6 +221,9 @@ public class JournalService
         if (errors.Count > 0) return PostResult.Fail(errors, difference);
 
         await _repo.AddAsync(entry);
+        // BRD OI-1: the last rate typed for a date is the one proposed next time (only once the entry is saved)
+        foreach (var (currency, rate) in typedRates.GroupBy(t => t.Currency).Select(g => g.Last()))
+            await _rates!.RememberAsync(companyId, currency, input.Date, rate);
         return PostResult.Ok(entry.Id);
     }
 }

@@ -9,6 +9,8 @@ public class JournalLineForm
     public decimal? Credit { get; set; }
     /// <summary>SR-19: empty means the base currency.</summary>
     public string? Currency { get; set; }
+    /// <summary>BRD OI-1: the rate typed for a foreign line; empty takes the proposed (last) rate.</summary>
+    public decimal? Rate { get; set; }
 }
 
 /// <summary>What the browser posts (Date, Reference, Description, Lines[i].AccountId/Debit/Credit).</summary>
@@ -27,5 +29,7 @@ public class JournalNewViewModel
     /// <summary>SR-19: the base currency and the currencies that have a rate.</summary>
     public string BaseCurrency { get; set; } = "";
     public List<string> Currencies { get; set; } = new();
+    /// <summary>BRD OI-1: every stored rate, so the page can propose the last rate on or before the entry date.</summary>
+    public List<ExchangeRate> Rates { get; set; } = new();
     public List<string> Errors { get; set; } = new();
 }
