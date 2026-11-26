@@ -89,6 +89,35 @@ public class CurrencyFlowTests : IClassFixture<StockiaFactory>
     }
 
     [Fact]
+    public async Task The_entry_page_proposes_the_last_rate_and_saves_the_rate_typed_on_the_line()
+    {
+        var client = await LoginAsync("accountant");
+        Assert.Equal(HttpStatusCode.Redirect, (await SetRate(client, "EUR", "2026-11-01", "1.085")).StatusCode);
+
+        var page = await client.GetStringAsync("/Journal/New");
+        Assert.Contains("data-rates", page);                        // the rates the page proposes from
+        Assert.Contains("\"EUR\"", page);
+        Assert.Contains("Lines[0].Rate", page);
+
+        var reference = "FX-T-" + Guid.NewGuid().ToString("N")[..8];
+        var post = await TestClient.PostFormAsync(client, "/Journal/New", new Dictionary<string, string>
+        {
+            ["Date"] = "2026-11-20", ["Reference"] = reference, ["Description"] = "",
+            ["Lines[0].AccountId"] = AccountId("FX-BANK").ToString(), ["Lines[0].Currency"] = "EUR", ["Lines[0].Rate"] = "1.1",
+            ["Lines[0].Debit"] = "100", ["Lines[0].Credit"] = "",
+            ["Lines[1].AccountId"] = AccountId("FX-REV").ToString(), ["Lines[1].Currency"] = "", ["Lines[1].Rate"] = "",
+            ["Lines[1].Debit"] = "", ["Lines[1].Credit"] = "110.00",
+        });
+        Assert.Equal(HttpStatusCode.Redirect, post.StatusCode);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<StockiaDbContext>();
+        var line = db.JournalLines.Single(l => db.JournalEntries.Any(e => e.Id == l.JournalEntryId && e.Reference == reference) && l.Currency == "EUR");
+        Assert.Equal((1.1m, 110.00m), (line.Rate!.Value, line.Debit));
+        Assert.Contains(db.ExchangeRates, r => r.CompanyId == _data.CompanyAId && r.Currency == "EUR" && r.Date == new DateTime(2026, 11, 20) && r.Rate == 1.1m);
+    }
+
+    [Fact]
     public async Task A_viewer_sees_the_rates_but_cannot_record_one()
     {
         var client = await LoginAsync("viewer");

@@ -45,7 +45,7 @@ public class JournalController : Controller
         // Rows left completely blank on the page are ignored.
         var lines = form.Lines
             .Where(l => !(l.AccountId == 0 && (l.Debit ?? 0m) == 0m && (l.Credit ?? 0m) == 0m))
-            .Select(l => new NewJournalLine(l.AccountId, l.Debit ?? 0m, l.Credit ?? 0m, l.Currency))
+            .Select(l => new NewJournalLine(l.AccountId, l.Debit ?? 0m, l.Credit ?? 0m, l.Currency, l.Rate))
             .ToList();
 
         var result = await _journal.PostAsync(companyId,
@@ -104,6 +104,7 @@ public class JournalController : Controller
             Accounts = await _journal.ListPostableAccountsAsync(companyId),
             BaseCurrency = await _rates.BaseCurrencyAsync(companyId),
             Currencies = await _rates.CurrenciesAsync(companyId),
+            Rates = await _rates.ListAsync(companyId),
             Errors = errors?.ToList() ?? new List<string>()
         };
     }

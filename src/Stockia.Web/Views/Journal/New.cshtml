@@ -3,6 +3,9 @@
 @{
     ViewData["Title"] = "New journal entry";
     string Amt(decimal? v) => v.HasValue && v.Value != 0 ? v.Value.ToString("0.00", CultureInfo.InvariantCulture) : "";
+    string RateText(decimal? v) => v?.ToString("0.##########", CultureInfo.InvariantCulture) ?? "";
+    // BRD OI-1: the stored rates, so the page proposes the last rate on or before the entry date
+    var rates = Model.Rates.Select(r => new { c = r.Currency, d = r.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), r = r.Rate });
 }
 <main class="page">
   <p><a asp-controller="Home" asp-action="Index">Home</a> | <a asp-controller="Ledger" asp-action="Index">Ledgers</a></p>
@@ -38,12 +41,13 @@
     <input id="Description" name="Description" value="@Model.Form.Description" maxlength="500" />
 
     <p class="empty-text">Amounts are in the currency of their line. A line in another currency is converted to
-      @Model.BaseCurrency at the rate of the entry date (<a asp-controller="ExchangeRates" asp-action="Index">exchange rates</a>).</p>
+      @Model.BaseCurrency at the rate you type; left blank, the last rate on or before the entry date is used (shown in grey,
+      from the <a asp-controller="ExchangeRates" asp-action="Index">exchange rates</a>).</p>
 
     <div class="grid-wrap">
-      <table class="grid">
+      <table class="grid" id="lines-table" data-rates='@Json.Serialize(rates)'>
         <thead>
-          <tr><th>Account</th><th>Currency</th><th class="num">Debit</th><th class="num">Credit</th></tr>
+          <tr><th>Account</th><th>Currency</th><th class="num">Rate</th><th class="num">Debit</th><th class="num">Credit</th></tr>
         </thead>
         <tbody id="lines">
           @for (var i = 0; i < Model.Form.Lines.Count; i++)
@@ -68,6 +72,7 @@
                   }
                 </select>
               </td>
+              <td><input name="Lines[@i].Rate" class="rate" type="number" step="any" min="0" value="@RateText(line.Rate)" aria-label="Rate, line @(i + 1)" /></td>
               <td><input name="Lines[@i].Debit" type="number" step="0.01" min="0" value="@Amt(line.Debit)" aria-label="Debit, line @(i + 1)" /></td>
               <td><input name="Lines[@i].Credit" type="number" step="0.01" min="0" value="@Amt(line.Credit)" aria-label="Credit, line @(i + 1)" /></td>
             </tr>
@@ -96,6 +101,7 @@
             }
           </select>
         </td>
+        <td><input name="Lines[__i__].Rate" class="rate" type="number" step="any" min="0" aria-label="Rate, new line" /></td>
         <td><input name="Lines[__i__].Debit" type="number" step="0.01" min="0" aria-label="Debit, new line" /></td>
         <td><input name="Lines[__i__].Credit" type="number" step="0.01" min="0" aria-label="Credit, new line" /></td>
       </tr>
@@ -114,6 +120,26 @@
     document.getElementById('add-line').addEventListener('click', function () {
       body.insertAdjacentHTML('beforeend', template.replace(/__i__/g, next));
       next++;
+      proposeAll();
     });
+
+    // BRD OI-1: propose the last rate on or before the entry date for each foreign line (as the hint of the
+    // Rate box; a blank box uses that rate, a typed one replaces it)
+    var rates = JSON.parse(document.getElementById('lines-table').getAttribute('data-rates') || '[]');
+    var date = document.querySelector('[name="Date"]');
+    function propose(row) {
+      var currency = row.querySelector('select[name$=".Currency"]').value;
+      var box = row.querySelector('input.rate');
+      var best = null;
+      rates.forEach(function (r) {
+        if (r.c === currency && (!date.value || r.d <= date.value) && (!best || r.d > best.d)) best = r;
+      });
+      box.disabled = !currency;
+      box.placeholder = currency ? (best ? String(best.r) : 'type the rate') : '';
+    }
+    function proposeAll() { Array.prototype.forEach.call(body.rows, propose); }
+    body.addEventListener('change', function (e) { if (e.target.name && /\.Currency$/.test(e.target.name)) propose(e.target.closest('tr')); });
+    date.addEventListener('change', proposeAll);
+    proposeAll();
   })();
 </script>

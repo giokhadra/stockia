@@ -29,6 +29,7 @@ builder.Services.AddScoped<CompanyAccessFilter>();
 builder.Services.AddScoped<ItemService>();
 builder.Services.AddScoped<WarehouseService>();
 builder.Services.AddScoped<PurchaseInvoiceService>();
+builder.Services.AddScoped<SalesInvoiceService>();
 builder.Services.AddScoped<StockService>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<JournalReversalService>();

@@ -9,6 +9,10 @@ public interface IExchangeRates
 {
     Task<string> BaseCurrencyAsync(int companyId);
     Task<ExchangeRate?> RateOnAsync(int companyId, string currency, DateTime date);
+
+    /// <summary>BRD OI-1: a rate the accountant typed on a transaction becomes the rate proposed for that date
+    /// (it replaces a rate of the same date). Does nothing where rates are not stored.</summary>
+    Task RememberAsync(int companyId, string currency, DateTime date, decimal rate) => Task.CompletedTask;
 }
 
 /// <summary>SR-19 / UC-7: the exchange rates of a company.</summary>
@@ -41,6 +45,12 @@ public class ExchangeRateService : IExchangeRates
             .Where(r => r.CompanyId == companyId && r.Currency == currency && r.Date <= day)
             .OrderByDescending(r => r.Date)
             .FirstOrDefaultAsync();
+    }
+
+    public async Task RememberAsync(int companyId, string currency, DateTime date, decimal rate)
+    {
+        var errors = await SetAsync(companyId, currency, date, rate);
+        if (errors.Count > 0) throw new InvalidOperationException(string.Join(" ", errors));
     }
 
     /// <summary>Records the rate of a currency from a date on; a second rate on the same date replaces the first.
