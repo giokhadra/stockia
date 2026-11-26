@@ -37,8 +37,14 @@ public class SalesInvoiceTests
         var transport = new Item { CompanyId = a.Id, Code = "TR", Name = "Delivery", Unit = "trip", Cost = 0m, SalePrice = 20m, VatRate = 0m, IsStock = false };
         var foreign = new Item { CompanyId = b.Id, Code = "FL", Name = "Flour B", Unit = "bag", Cost = 10m, SalePrice = 15m, VatRate = 11m, IsStock = true };
         db.Items.AddRange(flour, transport, foreign);
-        db.Warehouses.Add(new Warehouse { CompanyId = a.Id, Name = "Main warehouse" });
+                var main = new Warehouse { CompanyId = a.Id, Name = "Main warehouse" };
+        db.Warehouses.Add(main);
         await db.SaveChangesAsync();
+        // item 17 (SR-15): 1000 bags in stock, so these sales are within stock (a sale beyond stock waits for approval)
+        db.StockMovements.Add(new StockMovement { CompanyId = a.Id, ItemId = flour.Id, WarehouseId = main.Id,
+            Date = new DateTime(2026, 11, 1), Type = StockMovementTypes.In, Quantity = 1000m, Value = 10000m });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
 
         var rates = new ExchangeRateService(db);
         var journal = new JournalService(new EfJournalRepository(db), rates);

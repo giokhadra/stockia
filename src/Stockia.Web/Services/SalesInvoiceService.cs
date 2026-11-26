@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Stockia.Web.Data;
 using Stockia.Web.Domain;
+using Stockia.Web.Security;
 
 namespace Stockia.Web.Services;
 
@@ -185,21 +186,127 @@ public class SalesInvoiceService
         if (await _db.SalesInvoices.AnyAsync(i => i.CompanyId == companyId && i.Number == invoice.Number))
             return (null, new[] { $"Sales invoice {invoice.Number} already exists in this company." });
 
+        // Item 17, SR-15 / UC-9: a sale beyond the stock of its warehouse is kept, but it is not posted: no entry, no
+        // balance, no stock movement until a chief accountant or an administrator approves it.
+        var shortages = invoice.WarehouseId is int wh
+            ? await new StockService(_db).ShortagesAsync(companyId, wh, invoice.Lines)
+            : new List<StockShortage>();
+        if (shortages.Count > 0)
+        {
+            invoice.Status = InvoiceStatuses.PendingApproval;
+            _db.SalesInvoices.Add(invoice);
+            _db.AuditLogs.Add(Audit(companyId, userId, AuditActions.SaleAwaitingApproval,
+                $"{invoice.Number}: " + string.Join("; ", shortages.Select(Describe))));
+            await _db.SaveChangesAsync();
+            return (invoice, Array.Empty<string>());
+        }
+
         _db.SalesInvoices.Add(invoice);
         await _db.SaveChangesAsync();           // the invoice needs its Id to be posted
 
-        var posted = await _posting.PostAsync(companyId, userId, postable with { Id = invoice.Id });
-        if (!posted.Succeeded)
+        var failed = await PostAsync(invoice, customer!, userId, rate);
+        if (failed.Count > 0)
         {
             _db.SalesInvoices.Remove(invoice);   // nothing is kept of an invoice that could not be posted
             await _db.SaveChangesAsync();
-            return (null, posted.Errors);
+            return (null, failed);
+        }
+        return (invoice, Array.Empty<string>());
+    }
+
+    // ---- item 17: sales beyond stock (SR-15 / UC-9) ----
+
+    public Task<List<SalesInvoice>> ListAwaitingApprovalAsync(int companyId) =>
+        _db.SalesInvoices.Include(i => i.Partner)
+            .Where(i => i.CompanyId == companyId && i.Status == InvoiceStatuses.PendingApproval)
+            .OrderBy(i => i.Date).ThenBy(i => i.Id).ToListAsync();
+
+    /// <summary>What a sale waiting for approval is short of, today (for the approval page).</summary>
+    public async Task<List<StockShortage>> ShortagesOfAsync(int companyId, int invoiceId)
+    {
+        var invoice = await FindAsync(companyId, invoiceId);
+        return invoice?.WarehouseId is int wh
+            ? await new StockService(_db).ShortagesAsync(companyId, wh, invoice.Lines)
+            : new List<StockShortage>();
+    }
+
+    /// <summary>UC-9 main scenario: the sale is posted as it was entered (entry, customer balance), and the stock falls,
+    /// below zero if needed. Only a chief accountant or an administrator of the company may approve.</summary>
+    public async Task<(SalesInvoice? Invoice, IReadOnlyList<string> Errors)> ApproveAsync(int companyId, int userId, int invoiceId)
+    {
+        var (invoice, refusal) = await PendingForDecisionAsync(companyId, userId, invoiceId);
+        if (refusal is not null) return (null, new[] { refusal });
+
+        decimal rate = 1m;
+        if (invoice!.Currency != await _rates.BaseCurrencyAsync(companyId))
+        {
+            var found = await _rates.RateOnAsync(companyId, invoice.Currency, invoice.Date);
+            if (found is null)
+                return (null, new[] { $"There is no exchange rate for {invoice.Currency} on or before {invoice.Date:yyyy-MM-dd}. Add it first." });
+            rate = found.Rate;
         }
 
-        customer!.Balance += invoice.BaseTotal;  // SR-10: what the customer owes us rises by the invoice
+        var customer = await FindCustomerAsync(companyId, invoice.PartnerId);
+        var failed = await PostAsync(invoice, customer!, userId, rate, onPosted: () =>
+        {
+            invoice.Status = InvoiceStatuses.Posted;
+            invoice.DecidedByUserId = userId;
+            invoice.DecidedAt = DateTime.UtcNow;
+            _db.AuditLogs.Add(Audit(companyId, userId, AuditActions.SaleApproved, invoice.Number));
+        });
+        return failed.Count > 0 ? (null, failed) : (invoice, Array.Empty<string>());
+    }
+
+    /// <summary>UC-9 alternative: the sale is not posted and nothing moves; the invoice stays as a rejected record.</summary>
+    public async Task<(SalesInvoice? Invoice, IReadOnlyList<string> Errors)> RejectAsync(int companyId, int userId, int invoiceId)
+    {
+        var (invoice, refusal) = await PendingForDecisionAsync(companyId, userId, invoiceId);
+        if (refusal is not null) return (null, new[] { refusal });
+
+        invoice!.Status = InvoiceStatuses.Rejected;
+        invoice.DecidedByUserId = userId;
+        invoice.DecidedAt = DateTime.UtcNow;
+        _db.AuditLogs.Add(Audit(companyId, userId, AuditActions.SaleRejected, invoice.Number));
         await _db.SaveChangesAsync();
         return (invoice, Array.Empty<string>());
     }
+
+    private async Task<(SalesInvoice? Invoice, string? Refusal)> PendingForDecisionAsync(int companyId, int userId, int invoiceId)
+    {
+        var invoice = await FindAsync(companyId, invoiceId);
+        if (invoice is null) return (null, "Sales invoice not found.");
+        if (invoice.Status != InvoiceStatuses.PendingApproval) return (null, $"Sales invoice {invoice.Number} is not waiting for approval.");
+
+        var role = await _db.Assignments.Where(a => a.CompanyId == companyId && a.UserId == userId)
+            .Select(a => a.Role!.Name).FirstOrDefaultAsync();
+        if (role is not (CompanyRoles.ChiefAccountant or CompanyRoles.Administrator))
+            return (null, "Only a chief accountant or an administrator can approve or reject a sale beyond stock.");
+        return (invoice, null);
+    }
+
+    /// <summary>Posts the entry (SR-4), raises the customer's balance (SR-10) and takes the stock out (SR-15), in the
+    /// last save. Returns the posting errors, if any; then nothing of this is saved.</summary>
+    private async Task<IReadOnlyList<string>> PostAsync(SalesInvoice invoice, Customer customer, int userId, decimal rate,
+        Action? onPosted = null)
+    {
+        var posted = await _posting.PostAsync(invoice.CompanyId, userId, ToPostable(invoice, rate));
+        if (!posted.Succeeded) return posted.Errors;
+
+        customer.Balance += invoice.BaseTotal;  // SR-10: what the customer owes us rises by the invoice
+        if (invoice.WarehouseId is int wh)
+            await new StockService(_db).IssueSaleAsync(invoice, wh);
+        onPosted?.Invoke();
+        await _db.SaveChangesAsync();
+        return Array.Empty<string>();
+    }
+
+    private static AuditLog Audit(int companyId, int userId, string action, string details) => new()
+    {
+        CompanyId = companyId, UserId = userId, LogTime = DateTime.UtcNow, Action = action,
+        Details = details.Length > 400 ? details[..400] : details
+    };
+
+    private static string Describe(StockShortage s) => $"{s.Item} wanted {s.Wanted:0.##}, in stock {s.Available:0.##}";
 
     /// <summary>The invoice as the posting service wants it, in the base currency.</summary>
     private static PostableDocument ToPostable(SalesInvoice i, decimal rate) =>
