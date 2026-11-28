@@ -1,0 +1,83 @@
+@model Stockia.Web.Controllers.ReceiptViewModel
+@using System.Globalization
+@using Stockia.Web.Domain
+@{
+    ViewData["Title"] = "New receipt";
+    var inv = CultureInfo.InvariantCulture;
+}
+<div class="page">
+    <h1>New customer receipt</h1>
+    <p><a asp-action="Index">Customer receipts</a></p>
+
+    @if (Model.Errors.Count > 0)
+    {
+        <div class="error" role="alert">
+            <ul>@foreach (var e in Model.Errors) { <li>@e</li> }</ul>
+        </div>
+    }
+
+    <form method="get" asp-action="New" class="card-form">
+        <label>Customer
+            <select name="customerId" onchange="this.form.submit()">
+                <option value="">Choose a customer</option>
+                @foreach (var c in Model.Customers)
+                {
+                    <option value="@c.Id" selected="@(c.Id == Model.CustomerId)">@c.Name</option>
+                }
+            </select>
+        </label>
+        <noscript><div class="form-actions"><button type="submit">Show open invoices</button></div></noscript>
+    </form>
+
+    @if (Model.Customer is not null)
+    {
+        <p>Balance of @Model.Customer.Name: <strong id="customer-balance">@Model.Customer.Balance.ToString("N2")</strong></p>
+
+        @if (Model.Open.Count == 0)
+        {
+            <p class="empty-text">No open invoices for this customer.</p>
+        }
+        else
+        {
+            <form method="post" asp-action="New" class="card-form">
+                <input type="hidden" name="CustomerId" value="@Model.Customer.Id" />
+                <label>Number <input name="Number" value="@Model.Number" maxlength="50" placeholder="next number" /></label>
+                <label>Date <input name="Date" type="date" value="@Model.Date?.ToString("yyyy-MM-dd", inv)" required /></label>
+                <label>Received in
+                    <select name="Method">
+                        @foreach (var m in ReceiptMethods.All)
+                        {
+                            <option value="@m" selected="@(m == Model.Method)">@m</option>
+                        }
+                    </select>
+                </label>
+                <label>Description <input name="Description" value="@Model.Description" maxlength="500" /></label>
+
+                <table class="data-table">
+                    <thead><tr><th>Invoice</th><th>Date</th><th>Due</th><th>Total</th><th>Received</th><th>Open</th><th>Amount received</th></tr></thead>
+                    <tbody>
+                    @for (var i = 0; i < Model.Open.Count; i++)
+                    {
+                        var o = Model.Open[i];
+                        <tr>
+                            <td>@o.Invoice.Number</td>
+                            <td>@o.Invoice.Date.ToString("yyyy-MM-dd", inv)</td>
+                            <td>@o.Invoice.DueDate.ToString("yyyy-MM-dd", inv)</td>
+                            <td>@o.Invoice.Total.ToString("N2", inv) @o.Invoice.Currency</td>
+                            <td>@o.Paid.ToString("N2", inv)</td>
+                            <td>@o.Open.ToString("N2", inv)</td>
+                            <td>
+                                <input type="hidden" name="Allocations[@i].InvoiceId" value="@o.Invoice.Id" />
+                                <input name="Allocations[@i].Amount" type="number" step="0.01" min="0" max="@o.Open.ToString(inv)"
+                                       value="@Model.TypedFor(o.Invoice.Id)?.ToString("0.00", inv)" aria-label="Amount received for @o.Invoice.Number" />
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+                <p class="empty-text">A blank amount pays nothing on that invoice. All invoices of one receipt must be in the same currency.</p>
+                <div class="form-actions"><button type="submit">Save receipt</button></div>
+            </form>
+        }
+    }
+</div>

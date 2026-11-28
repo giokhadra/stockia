@@ -24,6 +24,9 @@ public class StockiaDbContext : DbContext
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<PurchaseInvoice> PurchaseInvoices => Set<PurchaseInvoice>();
     public DbSet<SalesInvoice> SalesInvoices => Set<SalesInvoice>();
+    public DbSet<Settlement> Settlements => Set<Settlement>();
+    public DbSet<CustomerReceipt> CustomerReceipts => Set<CustomerReceipt>();
+    public DbSet<SettlementAllocation> SettlementAllocations => Set<SettlementAllocation>();
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
         public DbSet<StockMovement> StockMovements => Set<StockMovement>();
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
@@ -172,6 +175,31 @@ public class StockiaDbContext : DbContext
             e.HasOne(i => i.Warehouse).WithMany().HasForeignKey(i => i.WarehouseId).OnDelete(DeleteBehavior.Restrict);
             e.Property(i => i.Status).HasMaxLength(20).IsRequired();
             e.HasOne<AppUser>().WithMany().HasForeignKey(i => i.DecidedByUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // SR-8, SR-11: receipts and payments share one table (Kind), like invoices; CompanyId on both tables (SR-33).
+        b.Entity<Settlement>(e =>
+        {
+            e.ToTable("Settlement");
+            e.HasDiscriminator<string>("Kind").HasValue<CustomerReceipt>("Receipt");
+            e.Property("Kind").HasMaxLength(20);
+            e.HasIndex("CompanyId", "Kind", nameof(Settlement.Number)).IsUnique();
+            e.Property(s => s.Number).HasMaxLength(50).IsRequired();
+            e.Property(s => s.Date).HasColumnType("date");
+            e.Property(s => s.Method).HasMaxLength(10).IsRequired();
+            e.Property(s => s.Currency).HasMaxLength(3).IsFixedLength().IsUnicode(false).IsRequired();
+            e.Property(s => s.Description).HasMaxLength(500);
+            e.HasOne<Company>().WithMany().HasForeignKey(s => s.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(s => s.Partner).WithMany().HasForeignKey(s => s.PartnerId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(s => s.Allocations).WithOne().HasForeignKey(a => a.SettlementId).IsRequired().OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<SettlementAllocation>(e =>
+        {
+            e.ToTable("SettlementAllocation");
+            e.HasIndex(a => a.InvoiceId);
+            e.HasOne<Company>().WithMany().HasForeignKey(a => a.CompanyId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.Invoice).WithMany().HasForeignKey(a => a.InvoiceId).IsRequired().OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<InvoiceLine>(e =>

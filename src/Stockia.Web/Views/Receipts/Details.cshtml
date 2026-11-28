@@ -1,0 +1,34 @@
+@model Stockia.Web.Domain.CustomerReceipt
+@using System.Globalization
+@{
+    ViewData["Title"] = "Receipt " + Model.Number;
+    var inv = CultureInfo.InvariantCulture;
+}
+<div class="page">
+    <h1>Receipt @Model.Number</h1>
+    <p><a asp-action="Index">Customer receipts</a> | <a asp-action="New" asp-route-customerId="@Model.PartnerId">New receipt for this customer</a></p>
+
+    <dl class="facts">
+        <dt>Customer</dt><dd>@Model.Partner?.Name</dd>
+        <dt>Date</dt><dd>@Model.Date.ToString("yyyy-MM-dd", inv)</dd>
+        <dt>Received in</dt><dd>@Model.Method</dd>
+        <dt>Amount</dt><dd id="receipt-amount">@Model.Amount.ToString("N2", inv) @Model.Currency</dd>
+        @if (!string.IsNullOrEmpty(Model.Description)) { <dt>Description</dt><dd>@Model.Description</dd> }
+    </dl>
+
+    <h2>Invoices paid</h2>
+    <table class="data-table">
+        <thead><tr><th>Invoice</th><th>Invoice total</th><th>Paid by this receipt</th></tr></thead>
+        <tbody>
+        @foreach (var a in Model.Allocations)
+        {
+            <tr>
+                <td>@a.Invoice?.Number</td>
+                <td>@a.Invoice?.Total.ToString("N2", inv) @a.Invoice?.Currency</td>
+                <td>@a.Amount.ToString("N2", inv)</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <p class="empty-text">The journal entry (Dr @(Model.Method == "Cash" ? "531 cash" : "512 bank"), Cr 411 receivable) was posted automatically.</p>
+</div>

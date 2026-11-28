@@ -62,3 +62,19 @@ public class PurchaseInvoiceRule : IPostingRule
         return lines;
     }
 }
+
+/// <summary>SR-11 / SR-4: a customer receipt. Dr Cash or Bank (where the money came in), Cr Receivable, for the base
+/// amount it settles. Each document line is one invoice settled.</summary>
+public class ReceiptRule : IPostingRule
+{
+    public string DocumentType => DocumentTypes.Receipt;
+
+    public IReadOnlyList<PostingLine> Build(PostableDocument document)
+    {
+        var total = InvoiceMath.Net(document.Lines);
+        var lines = new List<PostingLine>();
+        InvoiceMath.Debit(lines, document.CashAccount ?? PostingAccount.Bank, total);
+        InvoiceMath.Credit(lines, PostingAccount.Receivable, total);
+        return lines;
+    }
+}

@@ -6,7 +6,7 @@ namespace Stockia.Web.Services;
 
 /// <summary>The accounts a posting rule talks about. A rule names a role; the company's own account is found by
 /// its code (PostingAccountCodes), so a rule never holds an account id.</summary>
-public enum PostingAccount { Receivable, Payable, Sales, Purchases, Stock, VatCollected, VatDeductible }
+public enum PostingAccount { Receivable, Payable, Sales, Purchases, Stock, VatCollected, VatDeductible, Cash, Bank }
 
 /// <summary>SR-4: the code each role has in the chart of accounts (SR-1). Every company needs these accounts,
 /// active, before a document can be posted; change a code here if the company's chart differs.</summary>
@@ -21,6 +21,8 @@ public static class PostingAccountCodes
         PostingAccount.Stock => "311",
         PostingAccount.VatCollected => "4457",
         PostingAccount.VatDeductible => "4456",
+        PostingAccount.Cash => "531",          // SR-8, SR-11: cash box (PCGL class 5)
+        PostingAccount.Bank => "512",          // SR-8, SR-11: bank (PCGL class 5)
         _ => throw new ArgumentOutOfRangeException(nameof(account))
     };
 
@@ -33,6 +35,8 @@ public static class PostingAccountCodes
         PostingAccount.Stock => "stock",
         PostingAccount.VatCollected => "VAT collected",
         PostingAccount.VatDeductible => "VAT deductible",
+        PostingAccount.Cash => "cash",
+        PostingAccount.Bank => "bank",
         _ => throw new ArgumentOutOfRangeException(nameof(account))
     };
 }
@@ -40,10 +44,11 @@ public static class PostingAccountCodes
 /// <summary>One line of a document: a net amount (before VAT), its VAT rate in percent, and whether the item is held in stock.</summary>
 public record DocumentLine(string Description, decimal Net, decimal VatRate, bool IsStock);
 
-/// <summary>What the posting service needs to know about a saved document (a sales or purchase invoice;
-/// payments and receipts follow with their own rules). Number becomes the reference of the entry.</summary>
+/// <summary>What the posting service needs to know about a saved document (a sales or purchase invoice, a receipt
+/// or a payment). Number becomes the reference of the entry. CashAccount, for a receipt or a payment, is where the
+/// money went in or out (Cash or Bank); for a receipt or payment each line is one invoice settled, VAT 0.</summary>
 public record PostableDocument(string Type, int Id, string Number, DateTime Date, string? Description,
-    IReadOnlyList<DocumentLine> Lines);
+    IReadOnlyList<DocumentLine> Lines, PostingAccount? CashAccount = null);
 
 /// <summary>A line of the entry a rule wants: a role, and either a debit or a credit.</summary>
 public record PostingLine(PostingAccount Account, decimal Debit, decimal Credit);

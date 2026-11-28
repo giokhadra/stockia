@@ -30,6 +30,7 @@ builder.Services.AddScoped<ItemService>();
 builder.Services.AddScoped<WarehouseService>();
 builder.Services.AddScoped<PurchaseInvoiceService>();
 builder.Services.AddScoped<SalesInvoiceService>();
+builder.Services.AddScoped<ReceiptService>();
 builder.Services.AddScoped<StockService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<AuditService>();
@@ -39,6 +40,7 @@ builder.Services.AddScoped<JournalReversalService>();
 builder.Services.AddScoped<IPostedDocuments, EfPostedDocuments>();
 builder.Services.AddScoped<IPostingRule, SalesInvoiceRule>();
 builder.Services.AddScoped<IPostingRule, PurchaseInvoiceRule>();
+builder.Services.AddScoped<IPostingRule, ReceiptRule>();
 builder.Services.AddScoped<PostingService>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(o =>
